@@ -6,211 +6,137 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="健康日志">
+<meta name="apple-mobile-web-app-title" content="Axis">
 <meta name="theme-color" content="#f2f2f7">
-<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23007aff'/><text y='.9em' font-size='72' x='50%' text-anchor='middle'>❤️</text></svg>">
-<title>健康日志</title>
+<title>Axis</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-:root {
-  --bg:#f2f2f7; --surface:#fff; --surface2:#f2f2f7; --border:#e5e5ea;
-  --text:#000; --muted:#8e8e93; --accent:#007aff; --good:#34c759; --warn:#ff9500; --bad:#ff3b30;
-}
+:root{--bg:#f2f2f7;--surface:#fff;--surface2:#f2f2f7;--border:#e5e5ea;--text:#000;--muted:#8e8e93;--accent:#007aff;--good:#34c759;--warn:#ff9500;--bad:#ff3b30}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif;font-size:14px;line-height:1.6;min-height:100vh}
-
-/* NAV */
-nav{position:fixed;top:0;left:0;right:0;background:rgba(242,242,247,0.94);backdrop-filter:blur(12px);border-bottom:1px solid var(–border);z-index:100;display:flex;align-items:center;padding:0 16px;height:52px;gap:2px}
-.nav-logo{font-size:15px;font-weight:700;margin-right:auto;letter-spacing:-0.02em}
-nav button{background:none;border:none;color:var(–muted);font-size:13px;padding:6px 10px;cursor:pointer;border-radius:6px;transition:all .15s;font-family:inherit}
-nav button:hover{color:var(–text);background:var(–surface2)}
-nav button.active{color:var(–accent);background:rgba(0,122,255,0.1)}
-.user-badge{display:flex;align-items:center;gap:4px;font-size:13px;color:var(–muted);cursor:pointer;padding:4px 8px;border-radius:6px;border:none;background:none;font-family:inherit}
-.user-badge:hover{background:var(–surface2)}
-
-/* MAIN */
-main{max-width:860px;margin:0 auto;padding:68px 16px 40px}
-.page{display:none}
-.page.active{display:block}
-
-/* BACKUP BANNER */
-.backup-banner{background:rgba(255,149,0,0.1);border:1px solid rgba(255,149,0,0.3);border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+nav{position:fixed;top:0;left:0;right:0;background:rgba(242,242,247,0.94);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);z-index:100;display:flex;align-items:center;padding:0 12px;height:52px;gap:2px}
+.nav-logo{font-size:16px;font-weight:800;margin-right:auto;letter-spacing:-.03em;color:var(--accent)}
+nav button{background:none;border:none;color:var(--muted);font-size:13px;padding:6px 9px;cursor:pointer;border-radius:6px;transition:all .15s;font-family:inherit}
+nav button:hover{color:var(--text);background:var(--surface2)}
+nav button.active{color:var(--accent);background:rgba(0,122,255,0.1)}
+.user-badge{display:flex;align-items:center;gap:4px;font-size:13px;color:var(--muted);cursor:pointer;padding:4px 8px;border-radius:6px;border:none;background:none;font-family:inherit}
+.user-badge:hover{background:var(--surface2)}
+main{max-width:860px;margin:0 auto;padding:68px 14px 40px}
+.page{display:none}.page.active{display:block}
+.backup-banner{background:rgba(255,149,0,0.1);border:1px solid rgba(255,149,0,0.3);border-radius:10px;padding:11px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:10px}
 .backup-banner-text{font-size:13px;color:#c47800}
-.backup-banner button{background:var(–warn);color:#fff;border:none;border-radius:7px;padding:6px 14px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;flex-shrink:0}
-
-/* SECTION HEADER */
-.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
-.section-title{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(–muted);font-weight:500}
-
-/* CARD */
-.card{background:var(–surface);border:1px solid var(–border);border-radius:12px;padding:18px;margin-bottom:14px}
-
-/* FORM */
-label{display:block;font-size:11px;color:var(–muted);margin-bottom:4px;letter-spacing:.05em;text-transform:uppercase}
-input,textarea,select{width:100%;background:var(–surface2);border:1px solid var(–border);border-radius:8px;color:var(–text);font-family:inherit;font-size:14px;padding:8px 11px;outline:none;transition:border-color .15s;margin-bottom:12px}
-input:focus,textarea:focus,select:focus{border-color:var(–accent)}
-textarea{resize:vertical;min-height:72px}
-input[type=range]{padding:0;background:none;border:none;margin-bottom:2px;accent-color:var(–accent)}
-
-.btn{background:var(–accent);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:500;cursor:pointer;transition:opacity .15s;font-family:inherit}
+.backup-banner button{background:var(--warn);color:#fff;border:none;border-radius:7px;padding:5px 13px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;flex-shrink:0}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.section-title{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px}
+label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;letter-spacing:.05em;text-transform:uppercase}
+input,textarea,select{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;font-size:14px;padding:8px 11px;outline:none;transition:border-color .15s;margin-bottom:11px}
+input:focus,textarea:focus,select:focus{border-color:var(--accent)}
+textarea{resize:vertical;min-height:68px}
+input[type=range]{padding:0;background:none;border:none;margin-bottom:2px;accent-color:var(--accent)}
+input[type=date]{color:var(--text)}
+.btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:500;cursor:pointer;transition:opacity .15s;font-family:inherit}
 .btn:hover{opacity:.85}
-.btn-ghost{background:var(–surface2);color:var(–text);border:1px solid var(–border)}
+.btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
 .btn-sm{padding:5px 12px;font-size:12px}
-.btn-danger{background:var(–bad)}
-.btn-warn{background:var(–warn)}
-
+.btn-danger{background:var(--bad)}
+.btn-warn{background:var(--warn)}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
 .flex{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-
-/* CHIPS */
-.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
-.chip{padding:4px 11px;border-radius:20px;font-size:12px;border:1px solid var(–border);background:var(–surface2);color:var(–muted);cursor:pointer;transition:all .15s;user-select:none}
-.chip.selected{border-color:var(–accent);background:rgba(0,122,255,0.1);color:var(–accent)}
-.chip.sel-good{border-color:var(–good);background:rgba(52,199,89,0.1);color:var(–good)}
-.chip.sel-bad{border-color:var(–bad);background:rgba(255,59,48,0.1);color:var(–bad)}
-.chip.sel-warn{border-color:var(–warn);background:rgba(255,149,0,0.1);color:var(–warn)}
-
-/* FILTER */
-.filter-bar{display:flex;gap:6px;margin-bottom:14px}
-.filter-btn{padding:5px 13px;border-radius:6px;font-size:12px;border:1px solid var(–border);background:var(–surface2);color:var(–muted);cursor:pointer;transition:all .15s;font-family:inherit}
-.filter-btn.active{border-color:var(–accent);color:var(–accent);background:rgba(0,122,255,0.08)}
-
-/* STAT BOXES */
-.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
-.stat-box{background:var(–surface);border:1px solid var(–border);border-radius:10px;padding:12px;text-align:center}
-.stat-val{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
-.stat-label{font-size:11px;color:var(–muted);margin-top:2px}
-
-/* LOG ITEMS */
-.log-item{display:flex;align-items:flex-start;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(–border)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:11px}
+.chip{padding:4px 11px;border-radius:20px;font-size:12px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;transition:all .15s;user-select:none}
+.chip.selected{border-color:var(--accent);background:rgba(0,122,255,0.1);color:var(--accent)}
+.filter-bar{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.filter-btn{padding:5px 13px;border-radius:6px;font-size:12px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;transition:all .15s;font-family:inherit}
+.filter-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(0,122,255,0.08)}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.stat-box{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px;text-align:center}
+.stat-val{font-size:19px;font-weight:600;font-variant-numeric:tabular-nums}
+.stat-label{font-size:10px;color:var(--muted);margin-top:2px}
+.log-item{display:flex;align-items:flex-start;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border)}
 .log-item:last-child{border-bottom:none}
-.log-date{font-size:12px;color:var(–muted);min-width:68px;flex-shrink:0}
-.log-main{flex:1;padding:0 10px}
-.log-duration{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
-.log-sub{font-size:11px;color:var(–muted);line-height:1.6;margin-top:2px}
-.dur-bar{height:3px;background:var(–surface2);border-radius:2px;margin-top:5px}
+.log-date{font-size:11px;color:var(--muted);min-width:62px;flex-shrink:0;padding-top:2px}
+.log-main{flex:1;padding:0 8px}
+.log-duration{font-size:15px;font-weight:600}
+.log-sub{font-size:11px;color:var(--muted);line-height:1.6;margin-top:1px}
+.dur-bar{height:3px;background:var(--surface2);border-radius:2px;margin-top:4px}
 .dur-fill{height:100%;border-radius:2px}
-.del-btn{background:none;border:none;color:var(–muted);cursor:pointer;font-size:16px;padding:0 4px;flex-shrink:0;line-height:1}
-.del-btn:hover{color:var(–bad)}
-
-/* BODY LOG */
-.body-item{padding:12px 0;border-bottom:1px solid var(–border)}
+.del-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;padding:0 3px;flex-shrink:0;line-height:1}
+.del-btn:hover{color:var(--bad)}
+.edit-btn{background:none;border:none;color:var(--accent);cursor:pointer;font-size:12px;padding:0 5px;flex-shrink:0;line-height:1;font-family:inherit}
+.body-item{padding:11px 0;border-bottom:1px solid var(--border)}
 .body-item:last-child{border-bottom:none}
-.body-header{display:flex;align-items:center;gap:8px;margin-bottom:5px}
-.mood-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.body-tags{display:flex;gap:4px;flex-wrap:wrap;margin:5px 0}
-.btag{font-size:11px;padding:2px 7px;border-radius:4px;background:var(–surface2);border:1px solid var(–border);color:var(–muted)}
-.btag.sym{border-color:rgba(255,59,48,.3);color:var(–bad);background:rgba(255,59,48,.06)}
-.btag.rel{border-color:rgba(52,199,89,.3);color:var(–good);background:rgba(52,199,89,.06)}
-.btag.per{border-color:rgba(255,149,0,.3);color:var(–warn);background:rgba(255,149,0,.06)}
-.body-note{font-size:13px;color:var(–muted);line-height:1.5}
-
-/* SCORE PILLS */
-.score-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
-.score-label{font-size:12px;color:var(–muted);min-width:72px}
-.score-val{font-size:12px;font-weight:600;min-width:20px;text-align:right}
-
-/* INSIGHT */
-.insight{background:rgba(0,122,255,.06);border:1px solid rgba(0,122,255,.18);border-radius:10px;padding:13px 15px;margin-bottom:12px;font-size:13px;line-height:1.6}
-.insight-label{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(–accent);margin-bottom:4px;font-weight:500}
-
-/* SOP */
-.sop-item{padding:12px 0;border-bottom:1px solid var(–border)}
+.body-header{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.body-tags{display:flex;gap:4px;flex-wrap:wrap;margin:4px 0}
+.btag{font-size:11px;padding:2px 7px;border-radius:4px;background:var(--surface2);border:1px solid var(--border);color:var(--muted)}
+.btag.sym{border-color:rgba(255,59,48,.3);color:var(--bad);background:rgba(255,59,48,.06)}
+.btag.rel{border-color:rgba(52,199,89,.3);color:var(--good);background:rgba(52,199,89,.06)}
+.btag.per{border-color:rgba(255,149,0,.3);color:var(--warn);background:rgba(255,149,0,.06)}
+.insight{background:rgba(0,122,255,.06);border:1px solid rgba(0,122,255,.18);border-radius:10px;padding:12px 14px;margin-bottom:11px;font-size:13px;line-height:1.6}
+.insight-label{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:3px;font-weight:500}
+.sop-item{padding:11px 0;border-bottom:1px solid var(--border)}
 .sop-item:last-child{border-bottom:none}
-.sop-name{font-weight:500;cursor:pointer}
-.sop-meta{font-size:11px;color:var(–muted);margin:2px 0 6px}
-.sop-steps{padding-left:16px;display:none}
-.sop-steps.open{display:block}
-.sop-steps li{font-size:13px;color:var(–muted);margin-bottom:3px;line-height:1.5}
-
-/* GOALS */
-.goal-item{display:flex;align-items:flex-start;gap:10px;padding:11px 0;border-bottom:1px solid var(–border)}
+.sop-steps-body{display:none;padding-top:6px}
+.sop-steps-body.open{display:block}
+.sop-steps-body ol{padding-left:16px}
+.sop-steps-body li{font-size:13px;color:var(--muted);margin-bottom:3px;line-height:1.5}
+.goal-item{display:flex;align-items:flex-start;gap:9px;padding:10px 0;border-bottom:1px solid var(--border)}
 .goal-item:last-child{border-bottom:none}
-.g-check{width:18px;height:18px;border-radius:50%;border:1.5px solid var(–border);flex-shrink:0;margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;background:none;transition:all .15s}
-.g-check.done{border-color:var(–good);background:rgba(52,199,89,.12)}
-.g-check.done::after{content:‘✓’;font-size:10px;color:var(–good)}
-.g-text{flex:1;font-size:13px}
-.g-text.done{color:var(–muted);text-decoration:line-through}
-.g-cat{font-size:10px;color:var(–muted);text-transform:uppercase;letter-spacing:.05em}
-
-/* CHART */
-.chart-wrap{position:relative;height:190px}
-
-/* EMPTY */
-.empty{text-align:center;padding:36px 20px;color:var(–muted);font-size:13px}
-
-/* MODAL */
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(6px);z-index:200;align-items:center;justify-content:center;padding:16px}
+.g-check{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--border);flex-shrink:0;margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;background:none;transition:all .15s}
+.g-check.done{border-color:var(--good);background:rgba(52,199,89,.12)}
+.g-check.done::after{content:'✓';font-size:10px;color:var(--good)}
+.g-text{font-size:13px}.g-text.done{color:var(--muted);text-decoration:line-through}
+.g-meta{font-size:10px;color:var(--muted);display:flex;gap:8px;margin-top:2px}
+.g-tag{background:rgba(0,122,255,.08);color:var(--accent);border-radius:4px;padding:1px 6px;font-size:10px}
+.chart-wrap{position:relative;height:180px}
+.empty{text-align:center;padding:32px 20px;color:var(--muted);font-size:13px}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(6px);z-index:200;align-items:center;justify-content:center;padding:14px}
 .modal-overlay.open{display:flex}
-.modal{background:var(–surface);border:1px solid var(–border);border-radius:16px;padding:22px;width:100%;max-width:480px;max-height:85vh;overflow-y:auto}
-.modal-title{font-size:16px;font-weight:600;margin-bottom:18px}
-
-/* RANGE DISPLAY */
-.rng-wrap{margin-bottom:12px}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;width:100%;max-width:480px;max-height:88vh;overflow-y:auto}
+.modal-title{font-size:16px;font-weight:600;margin-bottom:16px}
+.rng-wrap{margin-bottom:11px}
 .rng-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
-.rng-val{font-size:14px;font-weight:600;color:var(–accent)}
-
-/* USER SCREEN */
-#user-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px;background:var(–bg)}
-#user-screen h1{font-size:24px;font-weight:700;margin-bottom:6px;letter-spacing:-.03em}
-#user-screen p{font-size:14px;color:var(–muted);margin-bottom:36px}
-.user-grid{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;max-width:380px;margin-bottom:28px}
-.user-card{background:var(–surface);border:1.5px solid var(–border);border-radius:16px;padding:20px 24px;text-align:center;cursor:pointer;transition:all .15s;min-width:100px}
-.user-card:hover{border-color:var(–accent);box-shadow:0 0 0 3px rgba(0,122,255,.1)}
-.u-avatar{font-size:34px;margin-bottom:7px;line-height:1}
+.rng-val{font-size:13px;font-weight:600;color:var(--accent)}
+#user-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px;background:var(--bg)}
+#user-screen h1{font-size:26px;font-weight:800;margin-bottom:6px;letter-spacing:-.04em;color:var(--accent)}
+#user-screen p{font-size:14px;color:var(--muted);margin-bottom:32px}
+.user-grid{display:flex;flex-wrap:wrap;gap:11px;justify-content:center;max-width:360px;margin-bottom:24px}
+.user-card{background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:18px 22px;text-align:center;cursor:pointer;transition:all .15s;min-width:95px}
+.user-card:hover{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,122,255,.1)}
+.u-avatar{font-size:32px;margin-bottom:6px;line-height:1}
 .u-name{font-size:13px;font-weight:500}
-.user-add{border-style:dashed;color:var(–muted)}
-.user-add:hover{border-color:var(–accent);color:var(–accent)}
-.manage-link{font-size:13px;color:var(–muted);background:none;border:none;cursor:pointer;text-decoration:underline;font-family:inherit}
-.mgr-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(–border)}
+.user-add{border-style:dashed;color:var(--muted)}.user-add:hover{border-color:var(--accent);color:var(--accent)}
+.manage-link{font-size:13px;color:var(--muted);background:none;border:none;cursor:pointer;text-decoration:underline;font-family:inherit}
+.mgr-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
 .mgr-row:last-child{border-bottom:none}
-
-/* SCROLLBAR */
-::-webkit-scrollbar{width:4px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:#c7c7cc;border-radius:2px}
-
-@media(max-width:560px){
-.grid-2,.grid-3{grid-template-columns:1fr}
-.stats-row{grid-template-columns:repeat(3,1fr)}
-.stat-val{font-size:16px}
-nav button{font-size:12px;padding:5px 7px}
-}
+.feel-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:2px}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#c7c7cc;border-radius:2px}
+@media(max-width:560px){.grid-2{grid-template-columns:1fr}.stats-row{grid-template-columns:repeat(3,1fr)}.stat-val{font-size:16px}nav button{font-size:12px;padding:5px 7px}}
 </style>
-
 </head>
 <body>
 
-<!-- USER SELECT SCREEN -->
-
-<!-- iPhone open tip (only shown on iOS) -->
-
 <div id="ios-tip" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;z-index:999;text-align:center;max-width:300px;line-height:1.5">
-  📱 在 Safari 中点击底部 <b>分享</b> 按钮 → <b>添加到主屏幕</b>，可像 App 一样使用
+  📱 Safari 底部点<b>分享</b>→<b>添加到主屏幕</b>，像 App 一样使用
   <div style="margin-top:8px"><button onclick="document.getElementById('ios-tip').style.display='none'" style="background:rgba(255,255,255,.2);border:none;color:#fff;padding:4px 12px;border-radius:6px;cursor:pointer;font-family:inherit">知道了</button></div>
 </div>
 
 <div id="user-screen">
-  <h1>健康日志</h1>
+  <h1>Axis</h1>
   <p>选择你的账户继续</p>
   <div class="user-grid" id="user-grid"></div>
   <button class="manage-link" id="manage-link">管理用户</button>
 </div>
 
-<!-- APP -->
-
 <div id="app" style="display:none">
 <nav>
-  <span class="nav-logo">健康日志</span>
+  <span class="nav-logo">Axis</span>
   <button class="active" data-page="sleep">睡眠</button>
   <button data-page="body">身体</button>
   <button data-page="sop">SOP</button>
   <button data-page="goals">目标</button>
-  <button class="user-badge" id="user-badge">
-    <span id="nav-avatar">👤</span>
-    <span id="nav-name">—</span>
-  </button>
+  <button class="btn-sm btn-ghost" id="io-btn" style="border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:12px;padding:4px 9px">备份</button>
+  <button class="user-badge" id="user-badge"><span id="nav-avatar">👤</span><span id="nav-name">—</span></button>
 </nav>
 
 <main>
@@ -219,7 +145,7 @@ nav button{font-size:12px;padding:5px 7px}
     <button onclick="exportData()">立即备份</button>
   </div>
 
-  <!-- SLEEP PAGE -->
+  <!-- SLEEP -->
 
   <div class="page active" id="page-sleep">
     <div class="section-header">
@@ -227,8 +153,8 @@ nav button{font-size:12px;padding:5px 7px}
       <button class="btn btn-sm" id="sleep-add-btn">+ 记录</button>
     </div>
     <div class="stats-row">
-      <div class="stat-box"><div class="stat-val" id="st-avg">—</div><div class="stat-label">平均时长</div></div>
-      <div class="stat-box"><div class="stat-val" id="st-best">—</div><div class="stat-label">最长睡眠</div></div>
+      <div class="stat-box"><div class="stat-val" id="st-avg">—</div><div class="stat-label">平均总时长</div></div>
+      <div class="stat-box"><div class="stat-val" id="st-segs">—</div><div class="stat-label">平均段数</div></div>
       <div class="stat-box"><div class="stat-val" id="st-days">0</div><div class="stat-label">记录天数</div></div>
     </div>
     <div class="card">
@@ -237,17 +163,17 @@ nav button{font-size:12px;padding:5px 7px}
         <button class="filter-btn" data-filter="month">本月</button>
         <button class="filter-btn" data-filter="year">全年</button>
       </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px">睡眠时间分布（0–24时）</div>
       <div class="chart-wrap"><canvas id="sleep-chart"></canvas></div>
     </div>
     <div class="card"><div id="sleep-list"><div class="empty">还没有记录，点击右上角开始</div></div></div>
   </div>
 
-  <!-- BODY PAGE -->
+  <!-- BODY -->
 
   <div class="page" id="page-body">
     <div class="section-header">
       <span class="section-title">身体状况</span>
-      <button class="btn btn-sm" id="body-add-btn">+ 记录</button>
     </div>
     <div class="insight" id="body-insight" style="display:none">
       <div class="insight-label">规律发现</div>
@@ -259,13 +185,12 @@ nav button{font-size:12px;padding:5px 7px}
         <button class="filter-btn" data-filter="头痛">头痛</button>
         <button class="filter-btn" data-filter="肩颈">肩颈</button>
         <button class="filter-btn" data-filter="经期">经期</button>
-        <button class="filter-btn" data-filter="睡眠瘫痪">睡眠瘫痪</button>
       </div>
-      <div id="body-list"><div class="empty">还没有记录</div></div>
+      <div id="body-list"><div class="empty">从睡眠记录中读取数据后显示</div></div>
     </div>
   </div>
 
-  <!-- SOP PAGE -->
+  <!-- SOP -->
 
   <div class="page" id="page-sop">
     <div class="section-header">
@@ -278,7 +203,7 @@ nav button{font-size:12px;padding:5px 7px}
     <div class="card"><div id="sop-list"><div class="empty">还没有 SOP</div></div></div>
   </div>
 
-  <!-- GOALS PAGE -->
+  <!-- GOALS -->
 
   <div class="page" id="page-goals">
     <div class="section-header">
@@ -286,116 +211,87 @@ nav button{font-size:12px;padding:5px 7px}
       <button class="btn btn-sm" id="goal-add-btn">+ 添加</button>
     </div>
     <div class="card">
-      <div style="margin-bottom:10px"><span class="section-title">长期目标</span></div>
+      <div style="margin-bottom:8px"><span class="section-title">长期目标</span></div>
       <div id="goal-long"><div class="empty">暂无</div></div>
     </div>
     <div class="card">
-      <div style="margin-bottom:10px"><span class="section-title">今日待办</span></div>
+      <div style="margin-bottom:8px"><span class="section-title">待办</span></div>
       <div id="goal-todo"><div class="empty">暂无</div></div>
     </div>
   </div>
 </main>
-</div><!-- end #app -->
-
-<!-- ===== MODALS ===== -->
+</div>
 
 <!-- SLEEP MODAL -->
 
 <div class="modal-overlay" id="sleep-modal">
   <div class="modal">
-    <div class="modal-title">记录睡眠</div>
-    <label>日期</label>
-    <input type="date" id="sl-date">
+    <div class="modal-title" id="sleep-modal-title">记录睡眠</div>
+    <label>日期</label><input type="date" id="sl-date">
     <div class="grid-2">
       <div><label>入睡时间</label><input type="time" id="sl-sleep"></div>
       <div><label>起床时间</label><input type="time" id="sl-wake"></div>
     </div>
-
-```
-<div class="rng-wrap">
-  <div class="rng-header"><label style="margin:0">睡醒感受</label><span class="rng-val" id="sl-feel-val">3</span></div>
-  <input type="range" min="1" max="5" value="3" id="sl-feel" oninput="document.getElementById('sl-feel-val').textContent=this.value">
-  <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted)"><span>很差</span><span>一般</span><span>很好</span></div>
-</div>
-
-<label>睡眠瘫痪</label>
-<div class="chips" id="sp-chips">
-  <span class="chip selected" data-val="无">无</span>
-  <span class="chip" data-val="有">有</span>
-</div>
-
-<label>小憩</label>
-<div class="chips" id="nap-chips">
-  <span class="chip selected" data-val="无">无</span>
-  <span class="chip" data-val="有">有，未计时</span>
-  <span class="chip" data-val="30">约 30 分钟</span>
-  <span class="chip" data-val="60">约 1 小时</span>
-  <span class="chip" data-val="90">约 1.5 小时</span>
-</div>
-
-<div class="rng-wrap">
-  <div class="rng-header"><label style="margin:0">头痛</label><span class="rng-val" id="sl-head-val">0</span></div>
-  <input type="range" min="0" max="10" value="0" id="sl-head" oninput="document.getElementById('sl-head-val').textContent=this.value">
-  <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted)"><span>无</span><span>难以忍受</span></div>
-</div>
-
-<div class="rng-wrap">
-  <div class="rng-header"><label style="margin:0">肩颈痛</label><span class="rng-val" id="sl-neck-val">0</span></div>
-  <input type="range" min="0" max="10" value="0" id="sl-neck" oninput="document.getElementById('sl-neck-val').textContent=this.value">
-  <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted)"><span>无</span><span>难以忍受</span></div>
-</div>
-
-<label>月经状态</label>
-<div class="chips" id="period-chips">
-  <span class="chip selected" data-val="非经期">非经期</span>
-  <span class="chip" data-val="经期前">经期前</span>
-  <span class="chip" data-val="经期中">经期中</span>
-  <span class="chip" data-val="经期后">经期后</span>
-</div>
-
-<label>备注</label>
-<textarea id="sl-note" placeholder="多梦、反复醒来……"></textarea>
-<div class="flex">
-  <button class="btn" id="sl-save-btn">保存</button>
-  <button class="btn btn-ghost" data-close="sleep-modal">取消</button>
-</div>
-```
-
+    <div class="rng-wrap">
+      <div class="rng-header"><label style="margin:0">睡醒感受</label><span class="rng-val" id="sl-feel-val">一般</span></div>
+      <input type="range" min="1" max="5" value="3" id="sl-feel">
+      <div class="feel-labels"><span>极度疲倦</span><span>仍然困倦</span><span>一般</span><span>比较精神</span><span>精力充沛</span></div>
+    </div>
+    <label>睡眠瘫痪</label>
+    <div class="chips" id="sp-chips">
+      <span class="chip selected" data-val="无">无</span>
+      <span class="chip" data-val="有">有</span>
+    </div>
+    <div class="rng-wrap">
+      <div class="rng-header"><label style="margin:0">头痛</label><span class="rng-val" id="sl-head-val">0</span></div>
+      <input type="range" min="0" max="10" value="0" id="sl-head">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted)"><span>无</span><span>难以忍受</span></div>
+    </div>
+    <div class="rng-wrap">
+      <div class="rng-header"><label style="margin:0">肩颈痛</label><span class="rng-val" id="sl-neck-val">0</span></div>
+      <input type="range" min="0" max="10" value="0" id="sl-neck">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted)"><span>无</span><span>难以忍受</span></div>
+    </div>
+    <label>月经状态</label>
+    <div class="chips" id="period-chips">
+      <span class="chip selected" data-val="非经期">非经期</span>
+      <span class="chip" data-val="经期前">经期前</span>
+      <span class="chip" data-val="经期中">经期中</span>
+      <span class="chip" data-val="经期后">经期后</span>
+    </div>
+    <label>备注</label>
+    <textarea id="sl-note" placeholder="多梦、反复醒来……"></textarea>
+    <div class="flex">
+      <button class="btn" id="sl-save-btn">保存</button>
+      <button class="btn btn-ghost" data-close="sleep-modal">取消</button>
+    </div>
   </div>
 </div>
 
-<!-- BODY MODAL -->
+<!-- BODY RELIEF MODAL -->
 
-<div class="modal-overlay" id="body-modal">
+<div class="modal-overlay" id="relief-modal">
   <div class="modal">
-    <div class="modal-title">记录身体状况</div>
-    <label>日期</label>
-    <input type="date" id="bd-date">
-    <label>整体心情</label>
-    <div class="chips" id="mood-chips">
-      <span class="chip" data-val="1">😞 很差</span>
-      <span class="chip" data-val="2">😐 一般</span>
-      <span class="chip" data-val="3" class="chip selected">🙂 还好</span>
-      <span class="chip" data-val="4">😊 不错</span>
-    </div>
-    <label>症状（可多选）</label>
-    <div class="chips multi" id="symptom-chips">
-      <span class="chip">肩颈不适</span><span class="chip">头痛</span>
-      <span class="chip">胃痛</span><span class="chip">疲惫</span>
-      <span class="chip">焦虑</span><span class="chip">经期</span>
-      <span class="chip">失眠</span><span class="chip">睡眠瘫痪</span>
-    </div>
+    <div class="modal-title" id="relief-modal-title">记录缓解情况</div>
+    <div id="relief-symptom-summary" style="margin-bottom:14px;padding:10px 12px;background:var(--surface2);border-radius:8px;font-size:13px;color:var(--muted);line-height:1.6"></div>
     <label>缓解方式（可多选）</label>
-    <div class="chips multi" id="relief-chips">
-      <span class="chip">拉伸</span><span class="chip">热敷</span>
-      <span class="chip">散步</span><span class="chip">冥想</span>
-      <span class="chip">休息</span><span class="chip">吃药</span>
+    <div class="chips" id="relief-chips">
+      <span class="chip">热敷</span><span class="chip">拉伸</span>
+      <span class="chip">瑜伽</span><span class="chip">散步</span>
+      <span class="chip">冥想</span><span class="chip">休息</span>
+      <span class="chip">头痛精油</span><span class="chip">止痛药</span>
+      <span class="chip">吃药</span><span class="chip">睡觉</span>
     </div>
-    <label>备注</label>
-    <textarea id="bd-note" placeholder="更多细节……"></textarea>
+    <div class="rng-wrap">
+      <div class="rng-header"><label style="margin:0">缓解程度</label><span class="rng-val" id="relief-degree-val">50%</span></div>
+      <input type="range" min="0" max="100" step="10" value="50" id="relief-degree">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted)"><span>无效果</span><span>完全缓解</span></div>
+    </div>
+    <label>补充备注</label>
+    <textarea id="relief-note" placeholder="其他细节……"></textarea>
     <div class="flex">
-      <button class="btn" id="bd-save-btn">保存</button>
-      <button class="btn btn-ghost" data-close="body-modal">取消</button>
+      <button class="btn" id="relief-save-btn">保存</button>
+      <button class="btn btn-ghost" data-close="relief-modal">取消</button>
     </div>
   </div>
 </div>
@@ -404,11 +300,11 @@ nav button{font-size:12px;padding:5px 7px}
 
 <div class="modal-overlay" id="sop-modal">
   <div class="modal">
-    <div class="modal-title">添加 SOP</div>
+    <div class="modal-title" id="sop-modal-title">添加 SOP</div>
     <label>名称</label><input type="text" id="sop-name" placeholder="例：偏头痛应对流程">
     <label>分类</label><input type="text" id="sop-cat" placeholder="健康 / 家务 / 工作">
     <label>步骤（每行一步）</label>
-    <textarea id="sop-steps" placeholder="喝一杯温水&#10;拉伸颈部5分钟&#10;关灯休息" style="min-height:110px"></textarea>
+    <textarea id="sop-steps-input" placeholder="喝一杯温水&#10;拉伸颈部5分钟&#10;关灯休息" style="min-height:100px"></textarea>
     <label>备注</label><textarea id="sop-note" placeholder="触发条件、注意事项……"></textarea>
     <div class="flex">
       <button class="btn" id="sop-save-btn">保存</button>
@@ -421,14 +317,20 @@ nav button{font-size:12px;padding:5px 7px}
 
 <div class="modal-overlay" id="goal-modal">
   <div class="modal">
-    <div class="modal-title">添加目标 / 待办</div>
+    <div class="modal-title" id="goal-modal-title">添加目标 / 待办</div>
     <label>内容</label><input type="text" id="goal-text" placeholder="我想……">
     <label>类型</label>
     <div class="chips" id="goal-type-chips">
       <span class="chip selected" data-val="long">长期目标</span>
-      <span class="chip" data-val="todo">今日待办</span>
+      <span class="chip" data-val="todo">待办</span>
     </div>
-    <label>分类（可选）</label><input type="text" id="goal-cat" placeholder="健康 / 学习 / 生活">
+    <div id="goal-date-wrap">
+      <label>截止日期（选填）</label>
+      <input type="date" id="goal-date" style="margin-bottom:11px">
+    </div>
+    <label>分类标签</label>
+    <div class="chips" id="goal-tag-chips"></div>
+    <input type="text" id="goal-tag-input" placeholder="输入新标签后按回车添加" style="margin-bottom:4px">
     <div class="flex">
       <button class="btn" id="goal-save-btn">保存</button>
       <button class="btn btn-ghost" data-close="goal-modal">取消</button>
@@ -442,7 +344,7 @@ nav button{font-size:12px;padding:5px 7px}
   <div class="modal">
     <div class="modal-title">管理用户</div>
     <div id="manage-list"></div>
-    <div class="flex" style="margin-top:14px">
+    <div class="flex" style="margin-top:13px">
       <button class="btn" id="add-user-btn">+ 添加用户</button>
       <button class="btn btn-ghost" data-close="manage-modal">关闭</button>
     </div>
@@ -455,7 +357,7 @@ nav button{font-size:12px;padding:5px 7px}
   <div class="modal">
     <div class="modal-title">添加用户</div>
     <label>名字</label><input type="text" id="new-name" placeholder="妈妈、小明……">
-    <label>选个头像</label>
+    <label>头像</label>
     <div class="chips" id="avatar-chips" style="font-size:20px">
       <span class="chip selected">🙋</span><span class="chip">👩</span><span class="chip">👨</span>
       <span class="chip">👧</span><span class="chip">👦</span><span class="chip">👵</span>
@@ -468,187 +370,148 @@ nav button{font-size:12px;padding:5px 7px}
   </div>
 </div>
 
-<!-- IMPORT/EXPORT MODAL -->
+<!-- IO MODAL -->
 
 <div class="modal-overlay" id="io-modal">
   <div class="modal">
     <div class="modal-title">数据备份 & 恢复</div>
-    <div style="margin-bottom:16px">
-      <div class="insight-label" style="margin-bottom:6px">导出备份</div>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:10px">将所有用户的数据导出为 health-backup.json 文件，保存到本地。</p>
+    <div style="margin-bottom:14px">
+      <div class="insight-label" style="margin-bottom:5px">导出备份</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:9px">导出所有用户数据为 health-backup.json</p>
       <button class="btn" onclick="exportData()">导出 health-backup.json</button>
     </div>
-    <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
+    <hr style="border:none;border-top:1px solid var(--border);margin:14px 0">
     <div>
-      <div class="insight-label" style="margin-bottom:6px">从备份恢复</div>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:10px">⚠️ 导入会覆盖当前所有数据，请谨慎操作。</p>
-      <label>选择备份文件</label>
-      <input type="file" id="import-file" accept=".json" style="margin-bottom:10px">
+      <div class="insight-label" style="margin-bottom:5px">从备份恢复</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:9px">⚠️ 导入会覆盖当前所有数据</p>
+      <input type="file" id="import-file" accept=".json">
       <button class="btn btn-warn" onclick="importData()">导入并恢复</button>
     </div>
-    <div style="margin-top:14px">
-      <button class="btn btn-ghost" data-close="io-modal">关闭</button>
-    </div>
+    <div style="margin-top:13px"><button class="btn btn-ghost" data-close="io-modal">关闭</button></div>
   </div>
 </div>
 
 <script>
-// ============================================================
-// STORAGE
-// ============================================================
-const LS = {
-  get(k,def=[]){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):def }catch(e){return def} },
-  set(k,v){ localStorage.setItem(k,JSON.stringify(v)) },
-  remove(k){ localStorage.removeItem(k) }
+// ── STORAGE ──────────────────────────────────────────────────
+const LS={
+  get(k,d=[]){try{const v=localStorage.getItem(k);return v!==null?JSON.parse(v):d}catch(e){return d}},
+  set(k,v){localStorage.setItem(k,JSON.stringify(v))},
+  remove(k){localStorage.removeItem(k)}
 }
 
-// ============================================================
-// USER SYSTEM
-// ============================================================
-let CU = null // current user
-
-function getUsers(){ return LS.get('__users__',[]) }
-function saveUsers(u){ LS.set('__users__',u) }
-
-function dbKey(k){ return (CU?.id||'anon')+'_'+k }
-const DB = {
-  get(k){ return LS.get(dbKey(k),[]) },
-  set(k,v){ LS.set(dbKey(k),v) }
+// ── USERS ─────────────────────────────────────────────────────
+let CU=null
+function getUsers(){return LS.get('__users__',[])}
+function saveUsers(u){LS.set('__users__',u)}
+const DB={
+  get(k){return LS.get((CU?.id||'anon')+'_'+k,[])},
+  set(k,v){LS.set((CU?.id||'anon')+'_'+k,v)},
+  key(k){return (CU?.id||'anon')+'_'+k}
 }
 
 function initApp(){
-  let users = getUsers()
-  if(!users.length){
-    users = [{id:'user_default',name:'我',avatar:'🙋'}]
-    saveUsers(users)
-  }
+  let users=getUsers()
+  if(!users.length){users=[{id:'user_default',name:'我',avatar:'🙋'}];saveUsers(users)}
   renderUserGrid()
 }
 
 function renderUserGrid(){
-  const users = getUsers()
-  const grid = document.getElementById('user-grid')
-  grid.innerHTML = ''
+  const users=getUsers(),grid=document.getElementById('user-grid')
+  grid.innerHTML=''
   users.forEach(u=>{
-    const d = document.createElement('div')
-    d.className = 'user-card'
-    d.innerHTML = `<div class="u-avatar">${u.avatar}</div><div class="u-name">${u.name}</div>`
-    d.addEventListener('click',()=>loginUser(u.id))
-    grid.appendChild(d)
+    const d=document.createElement('div');d.className='user-card'
+    d.innerHTML=`<div class="u-avatar">${u.avatar}</div><div class="u-name">${u.name}</div>`
+    d.addEventListener('click',()=>loginUser(u.id));grid.appendChild(d)
   })
-  const add = document.createElement('div')
-  add.className = 'user-card user-add'
-  add.innerHTML = `<div class="u-avatar">＋</div><div class="u-name">添加用户</div>`
-  add.addEventListener('click',()=>openModal('add-user-modal'))
-  grid.appendChild(add)
+  const add=document.createElement('div');add.className='user-card user-add'
+  add.innerHTML=`<div class="u-avatar">＋</div><div class="u-name">添加用户</div>`
+  add.addEventListener('click',()=>openModal('add-user-modal'));grid.appendChild(add)
 }
 
 function loginUser(id){
-  const u = getUsers().find(u=>u.id===id)
-  if(!u) return
-  CU = u
+  const u=getUsers().find(u=>u.id===id);if(!u)return
+  CU=u
   document.getElementById('user-screen').style.display='none'
   document.getElementById('app').style.display='block'
-  document.getElementById('nav-avatar').textContent = u.avatar
-  document.getElementById('nav-name').textContent = u.name
-  checkBackupBanner()
-  renderSleep()
+  document.getElementById('nav-avatar').textContent=u.avatar
+  document.getElementById('nav-name').textContent=u.name
+  checkBackupBanner();renderSleep()
 }
 
 function switchUser(){
-  CU = null
+  CU=null
   document.getElementById('app').style.display='none'
   document.getElementById('user-screen').style.display='flex'
   renderUserGrid()
 }
 
 function renderManageList(){
-  const users = getUsers()
-  const el = document.getElementById('manage-list')
-  if(!el) return
-  el.innerHTML=''
-  if(!users.length){ el.innerHTML='<div class="empty">没有用户</div>'; return }
+  const users=getUsers(),el=document.getElementById('manage-list')
+  if(!el)return;el.innerHTML=''
+  if(!users.length){el.innerHTML='<div class="empty">没有用户</div>';return}
   users.forEach(u=>{
-    const row = document.createElement('div')
-    row.className='mgr-row'
+    const row=document.createElement('div');row.className='mgr-row'
     row.innerHTML=`<span style="font-size:22px">${u.avatar}</span><span style="flex:1;font-weight:500;padding:0 8px">${u.name}</span>`
-    const btn = document.createElement('button')
-    btn.className = 'btn btn-sm' + (users.length > 1 ? ' btn-danger' : ' btn-ghost')
-    btn.textContent = users.length > 1 ? '删除' : '不可删除'
-    btn.disabled = users.length <= 1
-    btn.addEventListener('click', function(){
-      if(users.length <= 1){ alert('至少保留一个用户'); return }
-      if(!confirm('删除该用户及其所有数据？此操作不可撤销。')) return
-      const upd = getUsers().filter(x => x.id !== u.id)
-      saveUsers(upd)
-      ;['sleep','body','sop','goals'].forEach(k => LS.remove(u.id + '_' + k))
-      if(CU && CU.id === u.id) switchUser()
-      else { renderManageList(); renderUserGrid() }
+    const btn=document.createElement('button')
+    btn.className='btn btn-sm'+(users.length>1?' btn-danger':' btn-ghost')
+    btn.textContent=users.length>1?'删除':'不可删除'
+    btn.disabled=users.length<=1
+    btn.addEventListener('click',function(){
+      if(users.length<=1){alert('至少保留一个用户');return}
+      if(!confirm(`删除「${u.name}」及其所有数据？`))return
+      const upd=getUsers().filter(x=>x.id!==u.id);saveUsers(upd)
+      ;['sleep','body','sop','goals'].forEach(k=>LS.remove(u.id+'_'+k))
+      if(CU&&CU.id===u.id)switchUser()
+      else{renderManageList();renderUserGrid()}
     })
-    row.appendChild(btn)
-    el.appendChild(row)
+    row.appendChild(btn);el.appendChild(row)
   })
 }
 
 function addNewUser(){
-  const name = document.getElementById('new-name').value.trim()
-  const avatar = document.querySelector('#avatar-chips .chip.selected')?.textContent||'🙋'
-  if(!name){ alert('请输入名字'); return }
-  const users = getUsers()
-  users.push({id:'user_'+Date.now(), name, avatar})
-  saveUsers(users)
+  const name=document.getElementById('new-name').value.trim()
+  const avatar=document.querySelector('#avatar-chips .chip.selected')?.textContent||'🙋'
+  if(!name){alert('请输入名字');return}
+  const users=getUsers();users.push({id:'user_'+Date.now(),name,avatar});saveUsers(users)
   document.getElementById('new-name').value=''
-  closeModal('add-user-modal')
-  renderUserGrid()
-  renderManageList()
+  closeModal('add-user-modal');renderUserGrid();renderManageList()
 }
 
-// ============================================================
-// MODAL SYSTEM
-// ============================================================
+// ── MODAL ─────────────────────────────────────────────────────
 function openModal(id){
-  const m = document.getElementById(id)
-  if(!m) return
+  const m=document.getElementById(id);if(!m)return
   m.classList.add('open')
-  const di = m.querySelector('input[type=date]')
-  if(di&&!di.value) di.value = today()
-  if(id==='manage-modal') renderManageList()
+  const di=m.querySelector('input[type=date]')
+  if(di&&!di.value)di.value=today()
+  if(id==='manage-modal')renderManageList()
 }
-function closeModal(id){ document.getElementById(id)?.classList.remove('open') }
-
-// Close on overlay click or data-close button
-document.addEventListener('click', e=>{
-  if(e.target.classList.contains('modal-overlay')) closeModal(e.target.id)
-  const cl = e.target.dataset.close
-  if(cl) closeModal(cl)
+function closeModal(id){document.getElementById(id)?.classList.remove('open')}
+document.addEventListener('click',e=>{
+  if(e.target.classList.contains('modal-overlay'))closeModal(e.target.id)
+  const cl=e.target.dataset.close;if(cl)closeModal(cl)
 })
 
-// Single-select chips (within a group)
-function bindSingleChips(containerId){
-  document.querySelectorAll(`#${containerId} .chip`).forEach(c=>{
+// chip helpers
+function bindSingle(cid){
+  document.querySelectorAll(`#${cid} .chip`).forEach(c=>{
     c.addEventListener('click',()=>{
-      document.querySelectorAll(`#${containerId} .chip`).forEach(x=>x.classList.remove('selected'))
+      document.querySelectorAll(`#${cid} .chip`).forEach(x=>x.classList.remove('selected'))
       c.classList.add('selected')
     })
   })
 }
-// Multi-select chips
-function bindMultiChips(containerId){
-  document.querySelectorAll(`#${containerId} .chip`).forEach(c=>{
-    c.addEventListener('click',()=>c.classList.toggle('selected'))
-  })
+function bindMulti(cid){
+  document.querySelectorAll(`#${cid} .chip`).forEach(c=>c.addEventListener('click',()=>c.classList.toggle('selected')))
 }
-function getSelected(containerId){ return [...document.querySelectorAll(`#${containerId} .chip.selected`)].map(c=>c.textContent.trim()) }
-function getSingleVal(containerId){ return document.querySelector(`#${containerId} .chip.selected`)?.dataset.val || document.querySelector(`#${containerId} .chip.selected`)?.textContent.trim() }
+function getSelected(cid){return[...document.querySelectorAll(`#${cid} .chip.selected`)].map(c=>c.textContent.trim())}
+function getSingleVal(cid){
+  const s=document.querySelector(`#${cid} .chip.selected`)
+  return s?(s.dataset.val||s.textContent.trim()):null
+}
 
-// Init chip bindings
-bindSingleChips('sp-chips')
-bindSingleChips('nap-chips')
-bindSingleChips('period-chips')
-bindSingleChips('mood-chips')
-bindMultiChips('symptom-chips')
-bindMultiChips('relief-chips')
-bindSingleChips('goal-type-chips')
+bindSingle('sp-chips');bindSingle('period-chips')
+bindMulti('relief-chips')
+bindSingle('goal-type-chips')
 document.querySelectorAll('#avatar-chips .chip').forEach(c=>{
   c.addEventListener('click',()=>{
     document.querySelectorAll('#avatar-chips .chip').forEach(x=>x.classList.remove('selected'))
@@ -656,373 +519,548 @@ document.querySelectorAll('#avatar-chips .chip').forEach(c=>{
   })
 })
 
-// ============================================================
-// HELPERS
-// ============================================================
-function today(){ return new Date().toISOString().slice(0,10) }
-function fmtDate(d){ const x=new Date(d+'T00:00:00'); return `${x.getMonth()+1}月${x.getDate()}日` }
-function calcDur(s,w){ const [sh,sm]=s.split(':').map(Number),[wh,wm]=w.split(':').map(Number); let m=(wh*60+wm)-(sh*60+sm); if(m<0)m+=1440; return m/60 }
-function fmtH(h){ const hh=Math.floor(h),mm=Math.round((h-hh)*60); return `${hh}h${mm?mm+'m':''}` }
-function scoreColor(v,max){ if(v===0)return 'var(--good)'; const r=v/max; return r<0.4?'var(--good)':r<0.7?'var(--warn)':'var(--bad)' }
+// ── HELPERS ───────────────────────────────────────────────────
+function today(){return new Date().toISOString().slice(0,10)}
+function fmtDate(d){const x=new Date(d+'T00:00:00');return`${x.getMonth()+1}月${x.getDate()}日`}
+function timeToH(t){const[h,m]=t.split(':').map(Number);return h+m/60}
+function calcDur(s,w){let d=timeToH(w)-timeToH(s);if(d<0)d+=24;return d}
+function fmtH(h){const hh=Math.floor(h),mm=Math.round((h-hh)*60);return`${hh}h${mm?mm+'m':''}`}
 
-// ============================================================
-// BACKUP BANNER
-// ============================================================
+const feelLabels={1:'极度疲倦',2:'仍然困倦',3:'一般',4:'比较精神',5:'精力充沛'}
+
+// ── BACKUP ────────────────────────────────────────────────────
 function checkBackupBanner(){
-  const last = LS.get('__last_backup__',null)
-  if(!last){ document.getElementById('backup-banner').style.display='flex'; return }
-  const days = (Date.now()-new Date(last).getTime())/(1000*86400)
-  document.getElementById('backup-banner').style.display = days>=14?'flex':'none'
-  if(days>=14) document.getElementById('backup-text').textContent=`距离上次备份已 ${Math.floor(days)} 天，建议导出备份`
+  const last=LS.get('__last_backup__',null)
+  if(!last){document.getElementById('backup-banner').style.display='flex';return}
+  const days=(Date.now()-new Date(last).getTime())/(1000*86400)
+  document.getElementById('backup-banner').style.display=days>=14?'flex':'none'
+  if(days>=14)document.getElementById('backup-text').textContent=`距离上次备份已 ${Math.floor(days)} 天，建议导出备份`
 }
 
-// ============================================================
-// EXPORT / IMPORT
-// ============================================================
 function exportData(){
-  const users = getUsers()
-  const data = { version:1, exported: new Date().toISOString(), users, userData:{} }
+  const users=getUsers(),data={version:2,exported:new Date().toISOString(),users,userData:{}}
   users.forEach(u=>{
     data.userData[u.id]={
-      sleep: LS.get(u.id+'_sleep',[]),
-      body: LS.get(u.id+'_body',[]),
-      sop: LS.get(u.id+'_sop',[]),
-      goals: LS.get(u.id+'_goals',[])
+      sleep:LS.get(u.id+'_sleep',[]),body:LS.get(u.id+'_body',[]),
+      sop:LS.get(u.id+'_sop',[]),goals:LS.get(u.id+'_goals',[])
     }
   })
-  const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'})
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = 'health-backup.json'
-  a.click()
-  LS.set('__last_backup__', new Date().toISOString())
-  checkBackupBanner()
-  closeModal('io-modal')
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'})
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='health-backup.json';a.click()
+  LS.set('__last_backup__',new Date().toISOString());checkBackupBanner();closeModal('io-modal')
 }
 
 function importData(){
-  const file = document.getElementById('import-file').files[0]
-  if(!file){ alert('请先选择备份文件'); return }
-  const reader = new FileReader()
-  reader.onload = e=>{
+  const file=document.getElementById('import-file').files[0]
+  if(!file){alert('请先选择备份文件');return}
+  const reader=new FileReader()
+  reader.onload=e=>{
     try{
-      const data = JSON.parse(e.target.result)
-      if(!data.version||!data.users){ alert('文件格式不正确'); return }
-      if(!confirm('导入将覆盖当前所有数据，确认吗？')) return
+      const data=JSON.parse(e.target.result)
+      if(!data.version||!data.users){alert('文件格式不正确');return}
+      if(!confirm('导入将覆盖当前所有数据，确认吗？'))return
       saveUsers(data.users)
       Object.entries(data.userData||{}).forEach(([uid,ud])=>{
-        ;['sleep','body','sop','goals'].forEach(k=>{
-          if(ud[k]) LS.set(uid+'_'+k, ud[k])
-        })
+        ;['sleep','body','sop','goals'].forEach(k=>{if(ud[k])LS.set(uid+'_'+k,ud[k])})
       })
-      LS.set('__last_backup__', new Date().toISOString())
-      alert('恢复成功！页面将刷新。')
-      location.reload()
-    } catch(err){ alert('读取文件失败，请确认文件完整') }
+      LS.set('__last_backup__',new Date().toISOString())
+      alert('恢复成功！页面将刷新。');location.reload()
+    }catch(err){alert('读取文件失败')}
   }
   reader.readAsText(file)
 }
 
-// ============================================================
-// NAV
-// ============================================================
-let currentPage = 'sleep'
+// ── NAV ───────────────────────────────────────────────────────
 document.querySelectorAll('nav button[data-page]').forEach(btn=>{
   btn.addEventListener('click',()=>{
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'))
     document.querySelectorAll('nav button[data-page]').forEach(b=>b.classList.remove('active'))
     document.getElementById('page-'+btn.dataset.page).classList.add('active')
     btn.classList.add('active')
-    currentPage = btn.dataset.page
-    if(currentPage==='sleep') renderSleep()
-    if(currentPage==='body') renderBody()
-    if(currentPage==='sop') renderSOP()
-    if(currentPage==='goals') renderGoals()
+    if(btn.dataset.page==='sleep')renderSleep()
+    if(btn.dataset.page==='body')renderBody()
+    if(btn.dataset.page==='sop')renderSOP()
+    if(btn.dataset.page==='goals')renderGoals()
   })
 })
-document.getElementById('user-badge').addEventListener('click', switchUser)
+document.getElementById('user-badge').addEventListener('click',switchUser)
 document.getElementById('manage-link').addEventListener('click',()=>openModal('manage-modal'))
-document.getElementById('add-user-btn').addEventListener('click',()=>{ closeModal('manage-modal'); openModal('add-user-modal') })
-document.getElementById('new-user-save-btn').addEventListener('click', addNewUser)
+document.getElementById('add-user-btn').addEventListener('click',()=>{closeModal('manage-modal');openModal('add-user-modal')})
+document.getElementById('new-user-save-btn').addEventListener('click',addNewUser)
+document.getElementById('io-btn').addEventListener('click',()=>openModal('io-modal'))
 
-// ============================================================
-// SLEEP
-// ============================================================
-let sleepFilter='week', sleepChart=null
+// ── SLEEP ─────────────────────────────────────────────────────
+let sleepFilter='week',sleepChart=null,editingSleepId=null
 
-document.getElementById('sleep-add-btn').addEventListener('click',()=>{
-  // reset sliders
-  document.getElementById('sl-feel').value=3; document.getElementById('sl-feel-val').textContent='3'
-  document.getElementById('sl-head').value=0; document.getElementById('sl-head-val').textContent='0'
-  document.getElementById('sl-neck').value=0; document.getElementById('sl-neck-val').textContent='0'
-  document.querySelectorAll('#sp-chips .chip').forEach((c,i)=>c.classList.toggle('selected',i===0))
-  document.querySelectorAll('#nap-chips .chip').forEach((c,i)=>c.classList.toggle('selected',i===0))
-  document.querySelectorAll('#period-chips .chip').forEach((c,i)=>c.classList.toggle('selected',i===0))
-  document.getElementById('sl-note').value=''
-  openModal('sleep-modal')
+// feel slider label
+document.getElementById('sl-feel').addEventListener('input',function(){
+  document.getElementById('sl-feel-val').textContent=feelLabels[this.value]
 })
+document.getElementById('sl-head').addEventListener('input',function(){
+  document.getElementById('sl-head-val').textContent=this.value
+})
+document.getElementById('sl-neck').addEventListener('input',function(){
+  document.getElementById('sl-neck-val').textContent=this.value
+})
+
+function resetSleepModal(){
+  document.getElementById('sl-date').value=today()
+  document.getElementById('sl-sleep').value=''
+  document.getElementById('sl-wake').value=''
+  document.getElementById('sl-feel').value=3;document.getElementById('sl-feel-val').textContent='一般'
+  document.getElementById('sl-head').value=0;document.getElementById('sl-head-val').textContent='0'
+  document.getElementById('sl-neck').value=0;document.getElementById('sl-neck-val').textContent='0'
+  document.getElementById('sl-note').value=''
+  document.querySelectorAll('#sp-chips .chip').forEach((c,i)=>c.classList.toggle('selected',i===0))
+  document.querySelectorAll('#period-chips .chip').forEach((c,i)=>c.classList.toggle('selected',i===0))
+  document.getElementById('sleep-modal-title').textContent='记录睡眠'
+  editingSleepId=null
+}
+
+document.getElementById('sleep-add-btn').addEventListener('click',()=>{resetSleepModal();openModal('sleep-modal')})
 
 document.getElementById('sl-save-btn').addEventListener('click',()=>{
   const date=document.getElementById('sl-date').value
   const sleep=document.getElementById('sl-sleep').value
   const wake=document.getElementById('sl-wake').value
-  if(!date||!sleep||!wake){ alert('请填写日期和时间'); return }
+  if(!date||!sleep||!wake){alert('请填写日期和时间');return}
   const entry={
-    date, sleep, wake,
-    duration: +calcDur(sleep,wake).toFixed(2),
-    feel: +document.getElementById('sl-feel').value,
-    sp: getSingleVal('sp-chips'),
-    nap: getSingleVal('nap-chips'),
-    head: +document.getElementById('sl-head').value,
-    neck: +document.getElementById('sl-neck').value,
-    period: getSingleVal('period-chips'),
-    note: document.getElementById('sl-note').value.trim()
+    id: editingSleepId || Date.now(),
+    date,sleep,wake,
+    duration:+calcDur(sleep,wake).toFixed(2),
+    feel:+document.getElementById('sl-feel').value,
+    sp:getSingleVal('sp-chips'),
+    head:+document.getElementById('sl-head').value,
+    neck:+document.getElementById('sl-neck').value,
+    period:getSingleVal('period-chips'),
+    note:document.getElementById('sl-note').value.trim()
   }
-  const logs=DB.get('sleep')
-  const idx=logs.findIndex(l=>l.date===date)
-  if(idx>=0) logs[idx]=entry; else logs.push(entry)
-  logs.sort((a,b)=>b.date.localeCompare(a.date))
-  DB.set('sleep',logs)
-  closeModal('sleep-modal')
-  renderSleep()
+  let logs=DB.get('sleep')
+  if(editingSleepId){
+    const idx=logs.findIndex(l=>l.id===editingSleepId)
+    if(idx>=0)logs[idx]=entry; else logs.push(entry)
+  } else {
+    logs.push(entry)
+  }
+  logs.sort((a,b)=>b.date!==a.date?b.date.localeCompare(a.date):b.sleep.localeCompare(a.sleep))
+  DB.set('sleep',logs);closeModal('sleep-modal');renderSleep()
 })
 
 document.getElementById('sleep-filter-bar').addEventListener('click',e=>{
-  const btn=e.target.closest('.filter-btn')
-  if(!btn) return
+  const btn=e.target.closest('.filter-btn');if(!btn)return
   document.querySelectorAll('#sleep-filter-bar .filter-btn').forEach(b=>b.classList.remove('active'))
-  btn.classList.add('active')
-  sleepFilter=btn.dataset.filter
-  renderSleep()
+  btn.classList.add('active');sleepFilter=btn.dataset.filter;renderSleep()
 })
 
 function getFilteredSleep(){
-  const logs=DB.get('sleep'), now=new Date()
-  if(sleepFilter==='week'){ const d=new Date(now); d.setDate(d.getDate()-6); return logs.filter(l=>l.date>=d.toISOString().slice(0,10)) }
-  if(sleepFilter==='month'){ const d=new Date(now.getFullYear(),now.getMonth(),1); return logs.filter(l=>l.date>=d.toISOString().slice(0,10)) }
+  const logs=DB.get('sleep'),now=new Date()
+  if(sleepFilter==='week'){const d=new Date(now);d.setDate(d.getDate()-6);return logs.filter(l=>l.date>=d.toISOString().slice(0,10))}
+  if(sleepFilter==='month'){const d=new Date(now.getFullYear(),now.getMonth(),1);return logs.filter(l=>l.date>=d.toISOString().slice(0,10))}
   return logs
 }
 
-const feelEmoji={1:'😞',2:'😐',3:'🙂',4:'😄',5:'🤩'}
-const napLabel={'无':'无小憩','有':'有小憩','30':'小憩30m','60':'小憩1h','90':'小憩1.5h'}
-
 function renderSleep(){
   const all=DB.get('sleep')
-  if(all.length){
-    const avg=all.reduce((s,l)=>s+l.duration,0)/all.length
-    const best=Math.max(...all.map(l=>l.duration))
+  // stats: group by date
+  const byDate={}
+  all.forEach(l=>{if(!byDate[l.date])byDate[l.date]=[];byDate[l.date].push(l)})
+  const dates=Object.keys(byDate)
+  if(dates.length){
+    const totalByDate=dates.map(d=>byDate[d].reduce((s,l)=>s+l.duration,0))
+    const avg=totalByDate.reduce((s,v)=>s+v,0)/totalByDate.length
+    const avgSegs=all.length/dates.length
     document.getElementById('st-avg').textContent=fmtH(avg)
-    document.getElementById('st-best').textContent=fmtH(best)
-    document.getElementById('st-days').textContent=all.length
+    document.getElementById('st-segs').textContent=avgSegs.toFixed(1)+'段'
+    document.getElementById('st-days').textContent=dates.length
   }
-  const filtered=[...getFilteredSleep()].sort((a,b)=>a.date.localeCompare(b.date))
-  const labels=filtered.map(l=>{ const d=new Date(l.date+'T00:00:00'); return `${d.getMonth()+1}/${d.getDate()}` })
-  const data=filtered.map(l=>+l.duration.toFixed(2))
-  if(sleepChart) sleepChart.destroy()
+
+  // chart: sleep distribution 0-24h
+  const filtered=getFilteredSleep()
+  const hours=Array(24).fill(0)
+  filtered.forEach(l=>{
+    let s=timeToH(l.sleep),w=timeToH(l.wake)
+    if(w<s)w+=24
+    for(let h=Math.floor(s);h<w;h++){
+      const hh=h%24
+      const start=Math.max(s,h),end=Math.min(w,h+1)
+      hours[hh]+=(end-start)
+    }
+  })
+  const maxH=Math.max(...hours,1)
+  if(sleepChart)sleepChart.destroy()
   const ctx=document.getElementById('sleep-chart').getContext('2d')
   sleepChart=new Chart(ctx,{
     type:'bar',
-    data:{ labels, datasets:[{ data, backgroundColor:data.map(d=>d>=7?'rgba(52,199,89,.7)':d>=6?'rgba(255,149,0,.7)':'rgba(255,59,48,.7)'), borderRadius:4, borderSkipped:false }] },
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>' '+fmtH(c.raw)}}},
-      scales:{ x:{grid:{color:'rgba(0,0,0,.04)'},ticks:{color:'#8e8e93',font:{size:11}}}, y:{grid:{color:'rgba(0,0,0,.04)'},ticks:{color:'#8e8e93',font:{size:11}},min:0,max:12} } }
+    data:{
+      labels:Array.from({length:24},(_,i)=>`${i}`),
+      datasets:[{
+        data:hours.map(v=>+(v/Math.max(filtered.length,1)).toFixed(2)),
+        backgroundColor:'rgba(0,122,255,0.6)',
+        borderRadius:3,borderSkipped:false
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`平均 ${c.raw.toFixed(1)} 小时`}}},
+      scales:{
+        x:{grid:{color:'rgba(0,0,0,.04)'},ticks:{color:'#8e8e93',font:{size:10},maxRotation:0}},
+        y:{grid:{color:'rgba(0,0,0,.04)'},ticks:{color:'#8e8e93',font:{size:10}},min:0,title:{display:true,text:'平均时长(h)',color:'#8e8e93',font:{size:9}}}
+      }
+    }
   })
+
+  // list
   const listEl=document.getElementById('sleep-list')
-  if(!all.length){ listEl.innerHTML='<div class="empty">还没有记录，点击右上角开始</div>'; return }
-  listEl.innerHTML=all.slice(0,40).map((l,i)=>{
-    const fillW=Math.min(100,(l.duration/10)*100)
+  if(!all.length){listEl.innerHTML='<div class="empty">还没有记录，点击右上角开始</div>';return}
+  listEl.innerHTML=all.map(l=>{
     const col=l.duration>=7?'var(--good)':l.duration>=6?'var(--warn)':'var(--bad)'
+    const fillW=Math.min(100,(l.duration/10)*100)
     const badges=[]
-    if(l.feel) badges.push(`${feelEmoji[l.feel]} 睡醒${l.feel}分`)
-    if(l.sp==='有') badges.push('😰 睡眠瘫痪')
-    if(l.nap&&l.nap!=='无') badges.push(`💤 ${napLabel[l.nap]||'有小憩'}`)
-    if(l.head>0) badges.push(`头痛 ${l.head}`)
-    if(l.neck>0) badges.push(`肩颈 ${l.neck}`)
-    if(l.period&&l.period!=='非经期') badges.push(l.period)
-    return `<div class="log-item">
+    if(l.feel)badges.push(feelLabels[l.feel])
+    if(l.sp==='有')badges.push('😰 睡眠瘫痪')
+    if(l.head>0)badges.push(`头痛 ${l.head}/10`)
+    if(l.neck>0)badges.push(`肩颈 ${l.neck}/10`)
+    if(l.period&&l.period!=='非经期')badges.push(l.period)
+    return`<div class="log-item">
       <span class="log-date">${fmtDate(l.date)}</span>
       <div class="log-main">
         <div class="log-duration" style="color:${col}">${fmtH(l.duration)}</div>
-        <div class="log-sub">${l.sleep} 入睡 → ${l.wake} 起床</div>
-        ${badges.length?`<div class="log-sub">${badges.join('  ·  ')}</div>`:''}
+        <div class="log-sub">${l.sleep} → ${l.wake}</div>
+        ${badges.length?`<div class="log-sub">${badges.join(' · ')}</div>`:''}
         ${l.note?`<div class="log-sub">${l.note}</div>`:''}
         <div class="dur-bar"><div class="dur-fill" style="width:${fillW}%;background:${col}"></div></div>
       </div>
-      <button class="del-btn" data-idx="${i}" data-list="sleep">✕</button>
+      <button class="edit-btn" data-sleep-edit="${l.id}">编辑</button>
+      <button class="del-btn" data-sleep-del="${l.id}">✕</button>
     </div>`
   }).join('')
-  bindDeleteBtns('sleep-list','sleep')
+
+  listEl.querySelectorAll('[data-sleep-del]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      if(!confirm('删除这条记录？'))return
+      DB.set('sleep',DB.get('sleep').filter(l=>l.id!==+btn.dataset.sleepDel))
+      renderSleep()
+    })
+  })
+  listEl.querySelectorAll('[data-sleep-edit]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const l=DB.get('sleep').find(x=>x.id===+btn.dataset.sleepEdit);if(!l)return
+      editingSleepId=l.id
+      document.getElementById('sleep-modal-title').textContent='编辑睡眠'
+      document.getElementById('sl-date').value=l.date
+      document.getElementById('sl-sleep').value=l.sleep
+      document.getElementById('sl-wake').value=l.wake
+      document.getElementById('sl-feel').value=l.feel||3
+      document.getElementById('sl-feel-val').textContent=feelLabels[l.feel||3]
+      document.getElementById('sl-head').value=l.head||0;document.getElementById('sl-head-val').textContent=l.head||0
+      document.getElementById('sl-neck').value=l.neck||0;document.getElementById('sl-neck-val').textContent=l.neck||0
+      document.getElementById('sl-note').value=l.note||''
+      document.querySelectorAll('#sp-chips .chip').forEach(c=>c.classList.toggle('selected',c.dataset.val===l.sp))
+      document.querySelectorAll('#period-chips .chip').forEach(c=>c.classList.toggle('selected',c.dataset.val===l.period))
+      openModal('sleep-modal')
+    })
+  })
 }
 
-// ============================================================
-// BODY
-// ============================================================
-let bodyFilter='all'
-
-document.getElementById('body-add-btn').addEventListener('click',()=>{
-  document.querySelectorAll('#mood-chips .chip').forEach(c=>c.classList.remove('selected'))
-  document.querySelectorAll('#symptom-chips .chip, #relief-chips .chip').forEach(c=>c.classList.remove('selected'))
-  document.getElementById('bd-note').value=''
-  openModal('body-modal')
-})
-
-document.getElementById('bd-save-btn').addEventListener('click',()=>{
-  const date=document.getElementById('bd-date').value
-  if(!date){ alert('请填写日期'); return }
-  const moodEl=document.querySelector('#mood-chips .chip.selected')
-  const entry={
-    date,
-    mood: moodEl?+moodEl.dataset.val:null,
-    symptoms: getSelected('symptom-chips'),
-    reliefs: getSelected('relief-chips'),
-    note: document.getElementById('bd-note').value.trim()
-  }
-  const logs=DB.get('body')
-  const idx=logs.findIndex(l=>l.date===date)
-  if(idx>=0) logs[idx]=entry; else logs.push(entry)
-  logs.sort((a,b)=>b.date.localeCompare(a.date))
-  DB.set('body',logs)
-  closeModal('body-modal')
-  renderBody()
-})
+// ── BODY ──────────────────────────────────────────────────────
+let bodyFilter='all',reliefTargetDate=null
 
 document.getElementById('body-filter-bar').addEventListener('click',e=>{
-  const btn=e.target.closest('.filter-btn')
-  if(!btn) return
+  const btn=e.target.closest('.filter-btn');if(!btn)return
   document.querySelectorAll('#body-filter-bar .filter-btn').forEach(b=>b.classList.remove('active'))
-  btn.classList.add('active')
-  bodyFilter=btn.dataset.filter
-  renderBody()
+  btn.classList.add('active');bodyFilter=btn.dataset.filter;renderBody()
 })
 
-const moodCol={1:'var(--bad)',2:'var(--warn)',3:'#f7d96f',4:'var(--good)'}
-const moodTxt={1:'😞 很差',2:'😐 一般',3:'🙂 还好',4:'😊 不错'}
+document.getElementById('relief-degree').addEventListener('input',function(){
+  document.getElementById('relief-degree-val').textContent=this.value+'%'
+})
 
-function renderBody(){
-  const all=DB.get('body')
-  // patterns
-  if(all.length>=4){
-    const pts=[]
-    const ph=all.filter(l=>l.symptoms.includes('头痛')), pe=all.filter(l=>l.symptoms.includes('经期'))
-    const phe=ph.filter(l=>l.symptoms.includes('经期'))
-    if(ph.length&&phe.length>=2&&phe.length/ph.length>=0.5) pts.push(`头痛 ${ph.length} 次中有 ${phe.length} 次在经期，可能相关`)
-    const ag=all.filter(l=>l.symptoms.includes('焦虑')&&l.symptoms.includes('胃痛'))
-    if(ag.length>=2) pts.push(`焦虑与胃痛同时出现 ${ag.length} 次`)
-    const sp=all.filter(l=>l.symptoms.includes('睡眠瘫痪'))
-    if(sp.length>=2) pts.push(`睡眠瘫痪共记录 ${sp.length} 次`)
-    const ins=document.getElementById('body-insight')
-    if(pts.length){ ins.style.display='block'; document.getElementById('insight-text').textContent=pts.join('；')+'。数据越多，预测越准。' }
-    else ins.style.display='none'
+document.getElementById('relief-save-btn').addEventListener('click',()=>{
+  if(!reliefTargetDate)return
+  const reliefs=getSelected('relief-chips')
+  const degree=+document.getElementById('relief-degree').value
+  const note=document.getElementById('relief-note').value.trim()
+  const logs=DB.get('body')
+  const idx=logs.findIndex(l=>l.date===reliefTargetDate)
+  const entry={date:reliefTargetDate,reliefs,degree,note}
+  if(idx>=0)logs[idx]=entry;else logs.push(entry)
+  logs.sort((a,b)=>b.date.localeCompare(a.date))
+  DB.set('body',logs);closeModal('relief-modal');renderBody()
+})
+
+function openReliefModal(date,sleepEntries){
+  reliefTargetDate=date
+  document.getElementById('relief-modal-title').textContent=`缓解记录 · ${fmtDate(date)}`
+  // build symptom summary from sleep entries
+  const symptoms=[]
+  sleepEntries.forEach(l=>{
+    if(l.head>0)symptoms.push(`头痛 ${l.head}/10`)
+    if(l.neck>0)symptoms.push(`肩颈痛 ${l.neck}/10`)
+    if(l.sp==='有')symptoms.push('睡眠瘫痪')
+    if(l.period&&l.period!=='非经期')symptoms.push(l.period)
+  })
+  document.getElementById('relief-symptom-summary').textContent=symptoms.length?'当日记录：'+symptoms.join('、'):'当日无明显症状记录'
+  document.querySelectorAll('#relief-chips .chip').forEach(c=>c.classList.remove('selected'))
+  document.getElementById('relief-degree').value=50;document.getElementById('relief-degree-val').textContent='50%'
+  document.getElementById('relief-note').value=''
+  // pre-fill if existing body entry
+  const existing=DB.get('body').find(b=>b.date===date)
+  if(existing){
+    document.querySelectorAll('#relief-chips .chip').forEach(c=>{
+      if(existing.reliefs?.includes(c.textContent.trim()))c.classList.add('selected')
+    })
+    if(existing.degree!=null){document.getElementById('relief-degree').value=existing.degree;document.getElementById('relief-degree-val').textContent=existing.degree+'%'}
+    document.getElementById('relief-note').value=existing.note||''
   }
-  let logs=[...all]
-  if(bodyFilter!=='all') logs=logs.filter(l=>l.symptoms.some(s=>s.includes(bodyFilter)))
-  const el=document.getElementById('body-list')
-  if(!logs.length){ el.innerHTML='<div class="empty">没有符合条件的记录</div>'; return }
-  el.innerHTML=logs.map((l,i)=>`
-    <div class="body-item">
-      <div class="body-header">
-        ${l.mood?`<span class="mood-dot" style="background:${moodCol[l.mood]}"></span><span style="font-size:12px;color:${moodCol[l.mood]}">${moodTxt[l.mood]}</span>`:''}
-        <span style="font-size:11px;color:var(--muted);margin-left:auto">${fmtDate(l.date)}</span>
-        <button class="del-btn" data-idx="${i}" data-list="body" style="margin-left:6px">✕</button>
-      </div>
-      <div class="body-tags">
-        ${l.symptoms.map(s=>`<span class="btag sym">${s}</span>`).join('')}
-        ${l.reliefs.map(r=>`<span class="btag rel">${r}</span>`).join('')}
-      </div>
-      ${l.note?`<div class="body-note">${l.note}</div>`:''}
-    </div>`).join('')
-  bindDeleteBtns('body-list','body')
+  openModal('relief-modal')
 }
 
-// ============================================================
-// SOP
-// ============================================================
+function renderBody(){
+  const sleepLogs=DB.get('sleep')
+  const bodyLogs=DB.get('body')
+
+  // build daily entries from sleep data
+  const byDate={}
+  sleepLogs.forEach(l=>{
+    if(!byDate[l.date])byDate[l.date]=[]
+    byDate[l.date].push(l)
+  })
+
+  // patterns
+  const allDates=Object.keys(byDate)
+  if(allDates.length>=4){
+    const pts=[]
+    const headDays=allDates.filter(d=>byDate[d].some(l=>l.head>0))
+    const periodDays=allDates.filter(d=>byDate[d].some(l=>l.period==='经期中'))
+    const headPeriodDays=headDays.filter(d=>periodDays.includes(d))
+    if(headDays.length&&headPeriodDays.length>=2&&headPeriodDays.length/headDays.length>=0.4)
+      pts.push(`头痛 ${headDays.length} 天中有 ${headPeriodDays.length} 天在经期中，可能相关`)
+    const spDays=allDates.filter(d=>byDate[d].some(l=>l.sp==='有'))
+    if(spDays.length>=2)pts.push(`睡眠瘫痪共出现 ${spDays.length} 天`)
+    const neckDays=allDates.filter(d=>byDate[d].some(l=>l.neck>0))
+    if(neckDays.length>=3)pts.push(`肩颈痛出现 ${neckDays.length} 天，是最常见症状`)
+    const ins=document.getElementById('body-insight')
+    if(pts.length){ins.style.display='block';document.getElementById('insight-text').textContent=pts.join('；')+'。'}
+    else ins.style.display='none'
+  }
+
+  // filter
+  let dates=allDates.sort((a,b)=>b.localeCompare(a))
+  if(bodyFilter==='头痛')dates=dates.filter(d=>byDate[d].some(l=>l.head>0))
+  else if(bodyFilter==='肩颈')dates=dates.filter(d=>byDate[d].some(l=>l.neck>0))
+  else if(bodyFilter==='经期')dates=dates.filter(d=>byDate[d].some(l=>l.period&&l.period!=='非经期'))
+
+  const el=document.getElementById('body-list')
+  if(!dates.length){el.innerHTML='<div class="empty">暂无符合条件的睡眠记录</div>';return}
+
+  el.innerHTML=dates.map(date=>{
+    const entries=byDate[date]
+    const bodyEntry=bodyLogs.find(b=>b.date===date)
+    const symptoms=[]
+    entries.forEach(l=>{
+      if(l.head>0)symptoms.push({label:`头痛 ${l.head}/10`,type:'sym'})
+      if(l.neck>0)symptoms.push({label:`肩颈痛 ${l.neck}/10`,type:'sym'})
+      if(l.sp==='有')symptoms.push({label:'睡眠瘫痪',type:'sym'})
+      if(l.period&&l.period!=='非经期')symptoms.push({label:l.period,type:'per'})
+    })
+    const feelAvg=entries.filter(l=>l.feel).reduce((s,l,_,a)=>s+l.feel/a.length,0)
+    const feelTxt=feelAvg?feelLabels[Math.round(feelAvg)]:''
+    const reliefHtml=bodyEntry?`
+      <div class="body-tags">
+        ${bodyEntry.reliefs?.map(r=>`<span class="btag rel">${r}</span>`).join('')||''}
+        ${bodyEntry.degree!=null?`<span class="btag" style="border-color:rgba(0,122,255,.3);color:var(--accent)">缓解 ${bodyEntry.degree}%</span>`:''}
+      </div>
+      ${bodyEntry.note?`<div style="font-size:12px;color:var(--muted);margin-top:2px">${bodyEntry.note}</div>`:''}`:'<div style="font-size:12px;color:var(--muted)">未记录缓解方式</div>'
+    return`<div class="body-item">
+      <div class="body-header">
+        <span style="font-size:11px;color:var(--muted)">${fmtDate(date)}</span>
+        ${feelTxt?`<span style="font-size:11px;color:var(--accent);margin-left:4px">${feelTxt}</span>`:''}
+        <button class="edit-btn" style="margin-left:auto" data-body-date="${date}">+ 缓解记录</button>
+      </div>
+      <div class="body-tags">${symptoms.map(s=>`<span class="btag ${s.type}">${s.label}</span>`).join('')}</div>
+      ${reliefHtml}
+    </div>`
+  }).join('')
+
+  el.querySelectorAll('[data-body-date]').forEach(btn=>{
+    btn.addEventListener('click',()=>openReliefModal(btn.dataset.bodyDate, byDate[btn.dataset.bodyDate]||[]))
+  })
+}
+
+// ── SOP ───────────────────────────────────────────────────────
+let editingSopId=null
+
 document.getElementById('sop-add-btn').addEventListener('click',()=>{
+  editingSopId=null
+  document.getElementById('sop-modal-title').textContent='添加 SOP'
   document.getElementById('sop-name').value=''
   document.getElementById('sop-cat').value=''
-  document.getElementById('sop-steps').value=''
+  document.getElementById('sop-steps-input').value=''
   document.getElementById('sop-note').value=''
   openModal('sop-modal')
 })
+
 document.getElementById('sop-save-btn').addEventListener('click',()=>{
   const name=document.getElementById('sop-name').value.trim()
-  const steps=document.getElementById('sop-steps').value.trim()
-  if(!name||!steps){ alert('请填写名称和步骤'); return }
+  const steps=document.getElementById('sop-steps-input').value.trim()
+  if(!name||!steps){alert('请填写名称和步骤');return}
   const sops=DB.get('sop')
-  sops.push({ id:Date.now(), name, cat:document.getElementById('sop-cat').value.trim(), steps:steps.split('\n').filter(s=>s.trim()), note:document.getElementById('sop-note').value.trim(), created:today() })
-  DB.set('sop',sops)
-  closeModal('sop-modal')
-  renderSOP()
+  if(editingSopId){
+    const idx=sops.findIndex(s=>s.id===editingSopId)
+    if(idx>=0)sops[idx]={...sops[idx],name,cat:document.getElementById('sop-cat').value.trim(),steps:steps.split('\n').filter(s=>s.trim()),note:document.getElementById('sop-note').value.trim()}
+  } else {
+    sops.push({id:Date.now(),name,cat:document.getElementById('sop-cat').value.trim(),steps:steps.split('\n').filter(s=>s.trim()),note:document.getElementById('sop-note').value.trim(),created:today()})
+  }
+  DB.set('sop',sops);closeModal('sop-modal');renderSOP()
 })
+
 document.getElementById('sop-export-btn').addEventListener('click',()=>{
   const blob=new Blob([JSON.stringify(DB.get('sop'),null,2)],{type:'application/json'})
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='sop-export.json'; a.click()
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='sop-export.json';a.click()
 })
 
 function renderSOP(){
-  const sops=DB.get('sop')
-  const el=document.getElementById('sop-list')
-  if(!sops.length){ el.innerHTML='<div class="empty">还没有 SOP，点击右上角添加</div>'; return }
-  el.innerHTML=sops.map((s,i)=>`
+  const sops=DB.get('sop'),el=document.getElementById('sop-list')
+  if(!sops.length){el.innerHTML='<div class="empty">还没有 SOP</div>';return}
+  el.innerHTML=sops.map(s=>`
     <div class="sop-item">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between">
-        <div style="flex:1;cursor:pointer" data-sop-toggle="${i}">
-          <div class="sop-name">${s.name}</div>
-          <div class="sop-meta">${s.cat||'未分类'} · ${s.created} · ${s.steps.length} 步 ▾</div>
+      <div style="display:flex;align-items:flex-start">
+        <div style="flex:1;cursor:pointer" data-sop-toggle="${s.id}">
+          <div style="font-weight:500">${s.name}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${s.cat||'未分类'} · ${s.steps.length} 步 ▾</div>
         </div>
-        <button class="del-btn" data-idx="${i}" data-list="sop">✕</button>
+        <button class="edit-btn" data-sop-edit="${s.id}">编辑</button>
+        <button class="del-btn" data-sop-del="${s.id}">✕</button>
       </div>
-      <div class="sop-steps" id="sop-steps-${i}">
+      <div class="sop-steps-body" id="sop-body-${s.id}">
         <ol>${s.steps.map(st=>`<li>${st}</li>`).join('')}</ol>
         ${s.note?`<div style="margin-top:6px;font-size:12px;color:var(--muted)">${s.note}</div>`:''}
       </div>
     </div>`).join('')
   el.querySelectorAll('[data-sop-toggle]').forEach(el=>{
-    el.addEventListener('click',()=>document.getElementById('sop-steps-'+el.dataset.sopToggle)?.classList.toggle('open'))
+    el.addEventListener('click',()=>document.getElementById('sop-body-'+el.dataset.sopToggle)?.classList.toggle('open'))
   })
-  bindDeleteBtns('sop-list','sop')
+  el.querySelectorAll('[data-sop-del]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      if(!confirm('删除此 SOP？'))return
+      DB.set('sop',DB.get('sop').filter(s=>s.id!==+btn.dataset.sopDel));renderSOP()
+    })
+  })
+  el.querySelectorAll('[data-sop-edit]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const s=DB.get('sop').find(x=>x.id===+btn.dataset.sopEdit);if(!s)return
+      editingSopId=s.id
+      document.getElementById('sop-modal-title').textContent='编辑 SOP'
+      document.getElementById('sop-name').value=s.name
+      document.getElementById('sop-cat').value=s.cat||''
+      document.getElementById('sop-steps-input').value=s.steps.join('\n')
+      document.getElementById('sop-note').value=s.note||''
+      openModal('sop-modal')
+    })
+  })
 }
 
-// ============================================================
-// GOALS
-// ============================================================
+// ── GOALS ─────────────────────────────────────────────────────
+let editingGoalId=null
+
+// preset tags
+const DEFAULT_TAGS=['健康','家务','工作','学习','生活']
+function getAllTags(){
+  const saved=LS.get('__goal_tags__',DEFAULT_TAGS)
+  return [...new Set([...DEFAULT_TAGS,...saved])]
+}
+function saveTag(tag){
+  const tags=LS.get('__goal_tags__',DEFAULT_TAGS)
+  if(!tags.includes(tag)){tags.push(tag);LS.set('__goal_tags__',tags)}
+}
+
+function renderGoalTagChips(selected=[]){
+  const chips=document.getElementById('goal-tag-chips')
+  chips.innerHTML=''
+  getAllTags().forEach(t=>{
+    const c=document.createElement('span');c.className='chip'+(selected.includes(t)?' selected':'')
+    c.textContent=t
+    c.addEventListener('click',()=>c.classList.toggle('selected'))
+    chips.appendChild(c)
+  })
+}
+
+// tag input: press enter to add
+document.getElementById('goal-tag-input').addEventListener('keydown',e=>{
+  if(e.key!=='Enter')return;e.preventDefault()
+  const val=e.target.value.trim();if(!val)return
+  saveTag(val)
+  const cur=getSelected('goal-tag-chips')
+  renderGoalTagChips([...cur,val])
+  e.target.value=''
+})
+
+// show/hide date for todo vs long
+document.getElementById('goal-type-chips').addEventListener('click',e=>{
+  const chip=e.target.closest('.chip');if(!chip)return
+  document.querySelectorAll('#goal-type-chips .chip').forEach(c=>c.classList.remove('selected'))
+  chip.classList.add('selected')
+})
+
 document.getElementById('goal-add-btn').addEventListener('click',()=>{
+  editingGoalId=null
+  document.getElementById('goal-modal-title').textContent='添加目标 / 待办'
   document.getElementById('goal-text').value=''
-  document.getElementById('goal-cat').value=''
+  document.getElementById('goal-date').value=''
   document.querySelectorAll('#goal-type-chips .chip').forEach((c,i)=>c.classList.toggle('selected',i===0))
+  renderGoalTagChips()
   openModal('goal-modal')
 })
+
 document.getElementById('goal-save-btn').addEventListener('click',()=>{
   const text=document.getElementById('goal-text').value.trim()
-  if(!text){ alert('请填写内容'); return }
+  if(!text){alert('请填写内容');return}
+  const tags=getSelected('goal-tag-chips')
+  const type=getSingleVal('goal-type-chips')||'long'
+  const dueDate=document.getElementById('goal-date').value||null
+  tags.forEach(saveTag)
   const goals=DB.get('goals')
-  goals.push({ id:Date.now(), text, cat:document.getElementById('goal-cat').value.trim(), type:getSingleVal('goal-type-chips')||'long', done:false, created:today() })
-  DB.set('goals',goals)
-  closeModal('goal-modal')
-  renderGoals()
+  if(editingGoalId){
+    const idx=goals.findIndex(g=>g.id===editingGoalId)
+    if(idx>=0)goals[idx]={...goals[idx],text,tags,type,dueDate}
+  } else {
+    goals.push({id:Date.now(),text,tags,type,dueDate,done:false,created:today()})
+  }
+  DB.set('goals',goals);closeModal('goal-modal');renderGoals()
 })
 
 function renderGoals(){
   const goals=DB.get('goals')
   const renderList=(list,elId)=>{
-    const el=document.getElementById(elId)
-    if(!list.length){ el.innerHTML='<div class="empty">暂无</div>'; return }
-    el.innerHTML=''
-    list.forEach((g,i)=>{
-      const div=document.createElement('div')
-      div.className='goal-item'
+    const el=document.getElementById(elId);el.innerHTML=''
+    if(!list.length){el.innerHTML='<div class="empty">暂无</div>';return}
+    list.forEach(g=>{
+      const div=document.createElement('div');div.className='goal-item'
+      const dueTxt=g.dueDate?`<span>${fmtDate(g.dueDate)}</span>`:'';
+      const tagHtml=g.tags?.length?g.tags.map(t=>`<span class="g-tag">${t}</span>`).join(''):'';
       div.innerHTML=`
-        <div class="g-check${g.done?' done':''}" data-goal-id="${g.id}"></div>
+        <div class="g-check${g.done?' done':''}"></div>
         <div style="flex:1">
           <div class="g-text${g.done?' done':''}">${g.text}</div>
-          ${g.cat?`<div class="g-cat">${g.cat}</div>`:''}
+          <div class="g-meta">${dueTxt}${tagHtml}</div>
         </div>
-        <button class="del-btn" data-goal-del="${g.id}">✕</button>`
+        <button class="edit-btn">编辑</button>
+        <button class="del-btn">✕</button>`
       div.querySelector('.g-check').addEventListener('click',()=>{
-        const gs=DB.get('goals'), gx=gs.find(x=>x.id===g.id)
-        if(gx) gx.done=!gx.done; DB.set('goals',gs); renderGoals()
+        const gs=DB.get('goals'),gx=gs.find(x=>x.id===g.id)
+        if(gx)gx.done=!gx.done;DB.set('goals',gs);renderGoals()
       })
-      div.querySelector('[data-goal-del]').addEventListener('click',()=>{
-        DB.set('goals',DB.get('goals').filter(x=>x.id!==g.id)); renderGoals()
+      div.querySelector('.edit-btn').addEventListener('click',()=>{
+        editingGoalId=g.id
+        document.getElementById('goal-modal-title').textContent='编辑待办'
+        document.getElementById('goal-text').value=g.text
+        document.getElementById('goal-date').value=g.dueDate||''
+        document.querySelectorAll('#goal-type-chips .chip').forEach(c=>c.classList.toggle('selected',c.dataset.val===g.type))
+        renderGoalTagChips(g.tags||[])
+        openModal('goal-modal')
+      })
+      div.querySelector('.del-btn').addEventListener('click',()=>{
+        DB.set('goals',DB.get('goals').filter(x=>x.id!==g.id));renderGoals()
       })
       el.appendChild(div)
     })
@@ -1031,46 +1069,16 @@ function renderGoals(){
   renderList(goals.filter(g=>g.type==='todo'),'goal-todo')
 }
 
-// ============================================================
-// GENERIC DELETE FOR INDEXED LISTS
-// ============================================================
-function bindDeleteBtns(containerId, listKey){
-  document.querySelectorAll(`#${containerId} .del-btn[data-list="${listKey}"]`).forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      const logs=DB.get(listKey)
-      logs.splice(+btn.dataset.idx,1)
-      DB.set(listKey,logs)
-      if(listKey==='sleep') renderSleep()
-      if(listKey==='body') renderBody()
-      if(listKey==='sop') renderSOP()
-    })
-  })
-}
-
-// ============================================================
-// BACKUP / IO BUTTON in nav area - add to settings or a button
-// ============================================================
-// Add backup button to goals page header area using a small icon in nav
-const ioBtn = document.createElement('button')
-ioBtn.textContent = '备份'
-ioBtn.style.cssText='background:none;border:1px solid var(--border);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:6px;cursor:pointer;font-family:inherit;margin-left:4px'
-ioBtn.addEventListener('click',()=>openModal('io-modal'))
-document.querySelector('nav').insertBefore(ioBtn, document.getElementById('user-badge'))
-
-// ============================================================
-// INIT
-// ============================================================
-// Show iOS tip if on iOS Safari (not standalone)
+// ── INIT ──────────────────────────────────────────────────────
 ;(function(){
-  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent)
-  const isStandalone = window.navigator.standalone
-  const shownBefore = localStorage.getItem('__ios_tip_shown__')
-  if(isIOS && !isStandalone && !shownBefore){
+  const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent)
+  const isStandalone=window.navigator.standalone
+  const shown=localStorage.getItem('__ios_tip__')
+  if(isIOS&&!isStandalone&&!shown){
     document.getElementById('ios-tip').style.display='block'
-    localStorage.setItem('__ios_tip_shown__','1')
+    localStorage.setItem('__ios_tip__','1')
   }
 })()
-
 initApp()
 </script>
 
