@@ -1,270 +1,63 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Axis">
-<meta name="theme-color" content="#f2f2f7">
-<title>Axis</title>
-<style>
-:root{
-  --bg:#f2f2f7;--surface:#fff;--surface2:#f2f2f7;--border:#e5e5ea;
-  --text:#000;--muted:#8e8e93;--accent:#007aff;
-  --good:#34c759;--warn:#ff9500;--bad:#ff3b30;--purple:#af52de;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:14px;line-height:1.6;min-height:100vh}
-nav{position:fixed;top:0;left:0;right:0;background:rgba(242,242,247,0.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);z-index:100;display:flex;align-items:center;padding:0 12px;height:52px;gap:2px}
-.nav-logo{font-size:16px;font-weight:800;margin-right:auto;letter-spacing:-.03em;color:var(--accent)}
-nav button{background:none;border:none;color:var(--muted);font-size:13px;padding:6px 9px;cursor:pointer;border-radius:6px;transition:all .15s;font-family:inherit}
-nav button:hover{color:var(--text);background:var(--surface2)}
-nav button.active{color:var(--accent);background:rgba(0,122,255,0.1)}
-.user-badge{display:flex;align-items:center;gap:4px;cursor:pointer;border:none;background:none;font-family:inherit;font-size:13px;color:var(--muted);padding:4px 8px;border-radius:6px}
-.user-badge:hover{background:var(--surface2)}
-main{max-width:900px;margin:0 auto;padding:68px 14px 48px}
-.page{display:none}.page.active{display:block}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px}
-.card-title,.section-title{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:500}
-.card-title{margin-bottom:12px}
-.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.analysis-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
-.metric-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 12px}
-.metric-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
-.metric-val{font-size:15px;font-weight:700;margin-bottom:2px}
-.metric-sub{font-size:11px;color:var(--muted)}
-.metric-good{color:var(--good)}.metric-warn{color:var(--warn)}.metric-bad{color:var(--bad)}.metric-purple{color:var(--purple)}
-.insight-block{background:rgba(0,122,255,.05);border:1px solid rgba(0,122,255,.15);border-radius:10px;padding:13px 14px;margin-bottom:10px}
-.insight-block-title{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:6px;font-weight:600}
-.insight-line{font-size:13px;line-height:1.7;color:var(--text);padding:3px 0;border-bottom:1px solid rgba(0,122,255,.08)}
-.insight-line:last-child{border-bottom:none}.insight-line.strong{font-weight:500;color:var(--bad)}
-.insight-empty,.empty{text-align:center;padding:32px 20px;color:var(--muted);font-size:13px}
-.gantt-wrap{overflow:hidden}
-.sleep-distribution{display:flex;width:100%;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface)}
-.sleep-time-axis{width:54px;flex:0 0 54px;position:relative;border-right:1px solid var(--border);background:var(--surface);z-index:2}
-.sleep-time-axis-inner{position:relative;height:360px}
-.sleep-time-axis-footer{height:28px;border-top:1px solid var(--border);background:var(--surface)}
-.sleep-time-tick{position:absolute;right:7px;transform:translateY(-50%);font-size:10px;color:var(--muted);white-space:nowrap}
-.sleep-date-scroll{flex:1;min-width:0;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;background:var(--surface)}
-.sleep-plot{position:relative;height:360px;display:flex;align-items:stretch;background:linear-gradient(to bottom,rgba(0,0,0,.04) 1px,transparent 1px);background-size:100% 45px}
-.sleep-date-row{height:28px;display:flex;border-top:1px solid var(--border);background:var(--surface)}
-.sleep-day-col{position:relative;width:42px;flex:0 0 42px;border-right:1px solid rgba(0,0,0,.035)}
-.sleep-day-col.today{background:rgba(0,122,255,.035)}
-.sleep-day-label{width:42px;flex:0 0 42px;text-align:center;font-size:10px;color:var(--muted);line-height:28px;border-right:1px solid rgba(0,0,0,.035);white-space:nowrap}
-.sleep-plot.compact .sleep-day-col,.sleep-date-row.compact .sleep-day-label{flex:1 0 calc(100% / 7);width:auto}
-.sleep-block{position:absolute;left:7px;right:7px;min-height:2px;border-radius:4px;background:rgba(0,122,255,.76);box-shadow:0 0 0 1px rgba(0,122,255,.18) inset;cursor:default}
-.sleep-block.fragment-1{background:rgba(88,86,214,.68)}.sleep-block.fragment-2{background:rgba(52,199,89,.60)}.sleep-block.fragment-3{background:rgba(255,149,0,.58)}
-.sleep-block:hover::after{content:attr(data-tip);position:absolute;left:50%;top:-28px;transform:translateX(-50%);background:#333;color:#fff;font-size:10px;line-height:1;padding:5px 7px;border-radius:5px;white-space:nowrap;z-index:5;pointer-events:none}
-.heatmap-wrap{overflow-x:auto}.heatmap-grid{display:flex;flex-direction:column;gap:3px;min-width:300px}.heatmap-row{display:flex;align-items:center;gap:3px}
-.heatmap-label{font-size:10px;color:var(--muted);min-width:28px;text-align:right;flex-shrink:0}.heatmap-cell{width:22px;height:22px;border-radius:4px;flex-shrink:0;cursor:default;position:relative}
-.heatmap-cell:hover::after{content:attr(data-tip);position:absolute;bottom:26px;left:50%;transform:translateX(-50%);background:#333;color:#fff;font-size:10px;padding:3px 7px;border-radius:4px;white-space:nowrap;z-index:10;pointer-events:none}
-.heatmap-date-row{display:flex;align-items:center;gap:3px;margin-bottom:2px}.heatmap-date-label{font-size:9px;color:var(--muted);min-width:28px}.heatmap-date-cell{width:22px;font-size:9px;color:var(--muted);text-align:center;flex-shrink:0}
-.sleep-day-group{padding:11px 0;border-bottom:1px solid var(--border)}.sleep-day-group:last-child{border-bottom:none}
-.sleep-day-header{display:flex;align-items:center;gap:8px;margin-bottom:6px}.sleep-day-date{font-size:12px;color:var(--muted);min-width:68px}.sleep-day-total{font-size:15px;font-weight:600}.sleep-day-segs{font-size:11px;color:var(--muted)}
-.sleep-seg{display:flex;align-items:flex-start;padding:4px 0 4px 12px;border-left:2px solid var(--border);margin:3px 0;gap:6px}.sleep-seg-time{font-size:13px;font-weight:500;flex:1}.sleep-seg-dur,.sleep-seg-badges{font-size:11px;color:var(--muted)}
-.edit-btn{background:none;border:none;color:var(--accent);cursor:pointer;font-size:12px;padding:0 4px;font-family:inherit}.del-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 3px}.del-btn:hover{color:var(--bad)}
-label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;letter-spacing:.05em;text-transform:uppercase}
-input,textarea,select{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;font-size:14px;padding:8px 11px;outline:none;transition:border-color .15s;margin-bottom:11px}
-input:focus,textarea:focus{border-color:var(--accent)}textarea{resize:vertical;min-height:68px}input[type=range]{padding:0;background:none;border:none;margin-bottom:2px;accent-color:var(--accent)}
-.btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit}.btn:hover{opacity:.85}
-.btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border)}.btn-sm{padding:5px 12px;font-size:12px}.btn-danger{background:var(--bad)}.btn-warn{background:var(--warn)}
-.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.flex{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:11px}
-.chip{padding:4px 11px;border-radius:20px;font-size:12px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;transition:all .15s;user-select:none}.chip.selected{border-color:var(--accent);background:rgba(0,122,255,0.1);color:var(--accent)}
-.filter-bar{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}.filter-btn{padding:5px 13px;border-radius:6px;font-size:12px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;font-family:inherit}.filter-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(0,122,255,0.08)}
-.rng-wrap{margin-bottom:11px}.rng-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}.rng-val{font-size:13px;font-weight:600;color:var(--accent)}.feel-labels{display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-top:1px}
-.sop-item{padding:11px 0;border-bottom:1px solid var(--border)}.sop-item:last-child{border-bottom:none}.sop-steps-body{display:none;padding-top:6px}.sop-steps-body.open{display:block}.sop-steps-body ol{padding-left:16px}.sop-steps-body li{font-size:13px;color:var(--muted);margin-bottom:3px}
-.goal-item{display:flex;align-items:flex-start;gap:9px;padding:10px 0;border-bottom:1px solid var(--border)}.goal-item:last-child{border-bottom:none}.g-check{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--border);flex-shrink:0;margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;background:none;transition:all .15s}.g-check.done{border-color:var(--good);background:rgba(52,199,89,.12)}.g-check.done::after{content:"✓";font-size:10px;color:var(--good)}.g-text{font-size:13px}.g-text.done{color:var(--muted);text-decoration:line-through}.g-meta{font-size:10px;color:var(--muted);display:flex;gap:6px;margin-top:2px;flex-wrap:wrap}.g-tag{background:rgba(0,122,255,.08);color:var(--accent);border-radius:4px;padding:1px 6px;font-size:10px}
-.backup-banner{background:rgba(255,149,0,0.1);border:1px solid rgba(255,149,0,0.3);border-radius:10px;padding:11px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px}.backup-text{font-size:13px;color:#c47800}.backup-banner button{background:var(--warn);color:#fff;border:none;border-radius:7px;padding:5px 13px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;flex-shrink:0}
-#user-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px;background:var(--bg)}#user-screen h1{font-size:28px;font-weight:800;margin-bottom:6px;letter-spacing:-.04em;color:var(--accent)}#user-screen p{font-size:14px;color:var(--muted);margin-bottom:32px}.user-grid{display:flex;flex-wrap:wrap;gap:11px;justify-content:center;max-width:360px;margin-bottom:24px}.user-card{background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:18px 22px;text-align:center;cursor:pointer;transition:all .15s;min-width:95px}.user-card:hover{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,122,255,.1)}.u-avatar{font-size:32px;margin-bottom:6px;line-height:1}.u-name{font-size:13px;font-weight:500}.user-add{border-style:dashed;color:var(--muted)}.user-add:hover{border-color:var(--accent);color:var(--accent)}.manage-link{font-size:13px;color:var(--muted);background:none;border:none;cursor:pointer;text-decoration:underline;font-family:inherit}.mgr-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}.mgr-row:last-child{border-bottom:none}
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(6px);z-index:200;align-items:center;justify-content:center;padding:14px}.modal-overlay.open{display:flex}.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;width:100%;max-width:480px;max-height:88vh;overflow-y:auto}.modal-title{font-size:16px;font-weight:600;margin-bottom:16px}
-::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#c7c7cc;border-radius:2px}
-@media(max-width:760px){.analysis-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:560px){.grid-2,.analysis-grid{grid-template-columns:1fr}.sleep-time-axis{width:50px;flex-basis:50px}.sleep-day-col,.sleep-day-label{width:40px;flex-basis:40px}}
-</style>
-</head>
-<body>
-<div id="ios-tip" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;z-index:999;text-align:center;max-width:300px;line-height:1.5">
-  Safari 底部点<b>分享</b>→<b>添加到主屏幕</b>，像 App 一样使用
-  <div style="margin-top:8px"><button onclick="document.getElementById('ios-tip').style.display='none'" style="background:rgba(255,255,255,.2);border:none;color:#fff;padding:4px 12px;border-radius:6px;cursor:pointer;font-family:inherit">知道了</button></div>
-</div>
-<div id="user-screen">
-  <h1>Axis</h1>
-  <p>选择你的账户继续</p>
-  <div class="user-grid" id="user-grid"></div>
-  <button class="manage-link" id="manage-link">管理用户</button>
-</div>
-<div id="app" style="display:none">
-<nav>
-  <span class="nav-logo">Axis</span>
-  <button class="active" data-page="sleep">睡眠</button>
-  <button data-page="analysis">分析</button>
-  <button data-page="body">身体</button>
-  <button data-page="sop">SOP</button>
-  <button data-page="goals">目标</button>
-  <button id="io-btn" style="border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:12px;padding:4px 9px;background:none;cursor:pointer;font-family:inherit">备份</button>
-  <button class="user-badge" id="user-badge"><span id="nav-avatar">👤</span><span id="nav-name">—</span></button>
-</nav>
-<main>
-  <div id="backup-banner" class="backup-banner" style="display:none">
-    <span class="backup-text" id="backup-text">距离上次备份已超过14天，建议导出备份</span>
-    <button onclick="exportData()">立即备份</button>
-  </div>
-  <div class="page active" id="page-sleep">
-    <div class="section-header"><span class="section-title">睡眠记录</span><button class="btn btn-sm" id="sleep-add-btn">+ 记录</button></div>
-    <div class="card">
-      <div class="card-title">睡眠时间分布</div>
-      <div class="filter-bar" id="sleep-filter-bar">
-        <button class="filter-btn active" data-filter="7">近7天</button>
-        <button class="filter-btn" data-filter="30">近30天</button>
-        <button class="filter-btn" data-filter="183">近半年</button>
-        <button class="filter-btn" data-filter="365">近一年</button>
-      </div>
-      <div class="gantt-wrap"></div>
-    </div>
-    <div class="card"><div class="card-title">记录明细</div><div id="sleep-list"><div class="empty">还没有记录</div></div></div>
-  </div>
-  <div class="page" id="page-analysis">
-    <div class="section-header"><span class="section-title">健康分析</span><span style="font-size:11px;color:var(--muted)">基于近30天数据</span></div>
-    <div class="card"><div class="card-title">睡眠概况</div><div class="analysis-grid" id="sleep-metrics"></div></div>
-    <div class="card"><div class="card-title">头痛热力图</div><div class="heatmap-wrap"><div id="headache-heatmap"></div></div></div>
-    <div class="card"><div class="card-title">肩颈痛热力图</div><div class="heatmap-wrap"><div id="neck-heatmap"></div></div></div>
-    <div class="card"><div class="card-title">规律分析</div><div id="pattern-analysis"></div></div>
-    <div class="card" style="border-style:dashed;background:rgba(175,82,222,.04);border-color:rgba(175,82,222,.2)">
-      <div class="card-title" style="color:var(--purple)">头痛风险预测（预留）</div>
-      <div style="font-size:13px;color:var(--muted);line-height:1.7">
-        数据结构已预留。后续可基于睡眠时长、入睡时间、碎片化程度、月经状态做风险预测。
-        <span style="font-size:11px;margin-top:4px;display:block">当前已记录 <strong id="pred-days">0</strong> 天数据，还需 <strong id="pred-need">60</strong> 天</span>
-      </div>
-    </div>
-  </div>
-  <div class="page" id="page-body">
-    <div class="section-header"><span class="section-title">身体状况</span></div>
-    <div class="card">
-      <div class="filter-bar" id="body-filter-bar">
-        <button class="filter-btn active" data-filter="all">全部</button><button class="filter-btn" data-filter="头痛">头痛</button><button class="filter-btn" data-filter="肩颈">肩颈</button><button class="filter-btn" data-filter="经期">经期</button>
-      </div>
-      <div id="body-list"><div class="empty">从睡眠记录读取症状数据后显示</div></div>
-    </div>
-  </div>
-  <div class="page" id="page-sop">
-    <div class="section-header"><span class="section-title">SOP 手册</span><div class="flex" style="gap:6px"><button class="btn btn-sm btn-ghost" id="sop-export-btn">导出</button><button class="btn btn-sm" id="sop-add-btn">+ 添加</button></div></div>
-    <div class="card"><div id="sop-list"><div class="empty">还没有 SOP</div></div></div>
-  </div>
-  <div class="page" id="page-goals">
-    <div class="section-header"><span class="section-title">目标 & 待办</span><button class="btn btn-sm" id="goal-add-btn">+ 添加</button></div>
-    <div class="card"><div style="margin-bottom:8px"><span class="section-title">长期目标</span></div><div id="goal-long"><div class="empty">暂无</div></div></div>
-    <div class="card"><div style="margin-bottom:8px"><span class="section-title">待办</span></div><div id="goal-todo"><div class="empty">暂无</div></div></div>
-  </div>
-</main>
-</div>
-<div class="modal-overlay" id="sleep-modal"><div class="modal">
-  <div class="modal-title" id="sleep-modal-title">记录睡眠</div>
-  <label>日期</label><input type="date" id="sl-date">
-  <div class="grid-2"><div><label>入睡时间</label><input type="time" id="sl-sleep"></div><div><label>起床时间</label><input type="time" id="sl-wake"></div></div>
-  <div class="rng-wrap"><div class="rng-header"><label style="margin:0">睡醒感受</label><span class="rng-val" id="sl-feel-val">状态平稳</span></div><input type="range" min="1" max="5" value="3" id="sl-feel"><div class="feel-labels"><span>极度疲倦</span><span>仍然困倦</span><span>状态平稳</span><span>比较精神</span><span>精力充沛</span></div></div>
-  <label>睡眠瘫痪</label><div class="chips" id="sp-chips"><span class="chip selected" data-val="无">无</span><span class="chip" data-val="有">有</span></div>
-  <div class="rng-wrap"><div class="rng-header"><label style="margin:0">头痛</label><span class="rng-val" id="sl-head-val">0</span></div><input type="range" min="0" max="10" value="0" id="sl-head"><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted)"><span>无</span><span>难以忍受</span></div></div>
-  <div class="rng-wrap"><div class="rng-header"><label style="margin:0">肩颈痛</label><span class="rng-val" id="sl-neck-val">0</span></div><input type="range" min="0" max="10" value="0" id="sl-neck"><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted)"><span>无</span><span>难以忍受</span></div></div>
-  <label>月经状态</label><div class="chips" id="period-chips"><span class="chip selected" data-val="非经期">非经期</span><span class="chip" data-val="经期前">经期前</span><span class="chip" data-val="经期中">经期中</span><span class="chip" data-val="经期后">经期后</span></div>
-  <label>备注</label><textarea id="sl-note" placeholder="多梦、反复醒来……"></textarea>
-  <div class="flex"><button class="btn" id="sl-save-btn">保存</button><button class="btn btn-ghost" data-close="sleep-modal">取消</button></div>
-</div></div>
-<div class="modal-overlay" id="relief-modal"><div class="modal">
-  <div class="modal-title" id="relief-modal-title">缓解记录</div>
-  <div id="relief-symptom-summary" style="margin-bottom:14px;padding:10px 12px;background:var(--surface2);border-radius:8px;font-size:13px;color:var(--muted);line-height:1.6"></div>
-  <label>缓解方式（可多选）</label><div class="chips" id="relief-chips"><span class="chip">热敷</span><span class="chip">拉伸</span><span class="chip">瑜伽</span><span class="chip">散步</span><span class="chip">冥想</span><span class="chip">休息</span><span class="chip">头痛精油</span><span class="chip">止痛药</span><span class="chip">睡觉</span></div>
-  <div class="rng-wrap"><div class="rng-header"><label style="margin:0">缓解程度</label><span class="rng-val" id="relief-degree-val">50%</span></div><input type="range" min="0" max="100" step="10" value="50" id="relief-degree"><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted)"><span>无效果</span><span>完全缓解</span></div></div>
-  <label>备注</label><textarea id="relief-note" placeholder="其他细节……"></textarea>
-  <div class="flex"><button class="btn" id="relief-save-btn">保存</button><button class="btn btn-ghost" data-close="relief-modal">取消</button></div>
-</div></div>
-<div class="modal-overlay" id="sop-modal"><div class="modal">
-  <div class="modal-title" id="sop-modal-title">添加 SOP</div><label>名称</label><input type="text" id="sop-name" placeholder="例：偏头痛应对流程"><label>分类</label><input type="text" id="sop-cat" placeholder="健康 / 家务 / 工作"><label>步骤（每行一步）</label><textarea id="sop-steps-input" placeholder="喝一杯温水&#10;拉伸颈部5分钟&#10;关灯休息" style="min-height:100px"></textarea><label>备注</label><textarea id="sop-note" placeholder="触发条件、注意事项……"></textarea><div class="flex"><button class="btn" id="sop-save-btn">保存</button><button class="btn btn-ghost" data-close="sop-modal">取消</button></div>
-</div></div>
-<div class="modal-overlay" id="goal-modal"><div class="modal">
-  <div class="modal-title" id="goal-modal-title">添加目标 / 待办</div><label>内容</label><input type="text" id="goal-text" placeholder="我想……"><label>类型</label><div class="chips" id="goal-type-chips"><span class="chip selected" data-val="long">长期目标</span><span class="chip" data-val="todo">待办</span></div><label>截止日期（选填）</label><input type="date" id="goal-date"><label>分类标签</label><div class="chips" id="goal-tag-chips"></div><input type="text" id="goal-tag-input" placeholder="输入新标签后按回车"><div class="flex"><button class="btn" id="goal-save-btn">保存</button><button class="btn btn-ghost" data-close="goal-modal">取消</button></div>
-</div></div>
-<div class="modal-overlay" id="manage-modal"><div class="modal"><div class="modal-title">管理用户</div><div id="manage-list"></div><div class="flex" style="margin-top:13px"><button class="btn" id="add-user-btn">+ 添加用户</button><button class="btn btn-ghost" data-close="manage-modal">关闭</button></div></div></div>
-<div class="modal-overlay" id="add-user-modal"><div class="modal"><div class="modal-title">添加用户</div><label>名字</label><input type="text" id="new-name" placeholder="妈妈、小明……"><label>头像</label><div class="chips" id="avatar-chips" style="font-size:20px"><span class="chip selected">🙋</span><span class="chip">👩</span><span class="chip">👨</span><span class="chip">👧</span><span class="chip">👦</span><span class="chip">👵</span><span class="chip">👴</span><span class="chip">🐱</span><span class="chip">🐶</span></div><div class="flex"><button class="btn" id="new-user-save-btn">保存</button><button class="btn btn-ghost" data-close="add-user-modal">取消</button></div></div></div>
-<div class="modal-overlay" id="io-modal"><div class="modal"><div class="modal-title">数据备份 & 恢复</div><p style="font-size:13px;color:var(--muted);margin-bottom:10px">导出所有用户数据为 health-backup.json</p><button class="btn" onclick="exportData()" style="margin-bottom:16px">导出 health-backup.json</button><hr style="border:none;border-top:1px solid var(--border);margin-bottom:14px"><p style="font-size:13px;color:var(--muted);margin-bottom:8px">导入会覆盖当前所有数据</p><input type="file" id="import-file" accept=".json"><div class="flex" style="margin-top:8px"><button class="btn btn-warn" onclick="importData()">导入并恢复</button><button class="btn btn-ghost" data-close="io-modal">关闭</button></div></div></div>
-<script>
-const LS={get(k,d=[]){try{const v=localStorage.getItem(k);return v!==null?JSON.parse(v):d}catch(e){return d}},set(k,v){localStorage.setItem(k,JSON.stringify(v))},remove(k){localStorage.removeItem(k)}}
-let CU=null
-function getUsers(){return LS.get('__users__',[])}function saveUsers(u){LS.set('__users__',u)}
-const DB={get(k){return LS.get((CU?.id||'anon')+'_'+k,[])},set(k,v){LS.set((CU?.id||'anon')+'_'+k,v)}}
-function today(){return new Date().toISOString().slice(0,10)}
-function fmtDate(d){const x=new Date(d+'T00:00:00');return (x.getMonth()+1)+'月'+x.getDate()+'日'}
-function fmtDateShort(d){const x=new Date(d+'T00:00:00');return (x.getMonth()+1)+'/'+x.getDate()}
-function timeToMin(t){const [h,m]=String(t||'00:00').split(':').map(Number);return h*60+m}
-function minToClock(min){const m=((Math.round(min)%1440)+1440)%1440;const h=Math.floor(m/60),mm=m%60;return String(h).padStart(2,'0')+':'+String(mm).padStart(2,'0')}
-function timeToH(t){return timeToMin(t)/60}
-function calcDur(s,w){let d=timeToMin(w)-timeToMin(s);if(d<0)d+=1440;return d/60}
-function fmtH(h){const hh=Math.floor(h),mm=Math.round((h-hh)*60);return `${hh}h${mm?mm+'m':''}`}
-function addDate(date,offset){const d=new Date(date+'T00:00:00');d.setDate(d.getDate()+offset);return d.toISOString().slice(0,10)}
-function dateRange(days){const dates=[];const now=new Date();for(let i=days-1;i>=0;i--){const d=new Date(now);d.setDate(d.getDate()-i);dates.push(d.toISOString().slice(0,10))}return dates}
-const feelLabels={1:'极度疲倦',2:'仍然困倦',3:'状态平稳',4:'比较精神',5:'精力充沛'}
-function initApp(){let u=getUsers();if(!u.length){u=[{id:'user_default',name:'我',avatar:'🙋'}];saveUsers(u)}renderUserGrid()}
-function renderUserGrid(){const users=getUsers(),g=document.getElementById('user-grid');g.innerHTML='';users.forEach(u=>{const d=document.createElement('div');d.className='user-card';d.innerHTML=`<div class="u-avatar">${u.avatar}</div><div class="u-name">${u.name}</div>`;d.addEventListener('click',()=>loginUser(u.id));g.appendChild(d)});const add=document.createElement('div');add.className='user-card user-add';add.innerHTML='<div class="u-avatar">＋</div><div class="u-name">添加用户</div>';add.addEventListener('click',()=>openModal('add-user-modal'));g.appendChild(add)}
-function loginUser(id){const u=getUsers().find(x=>x.id===id);if(!u)return;CU=u;document.getElementById('user-screen').style.display='none';document.getElementById('app').style.display='block';document.getElementById('nav-avatar').textContent=u.avatar;document.getElementById('nav-name').textContent=u.name;checkBackupBanner();renderSleep()}
-function switchUser(){CU=null;document.getElementById('app').style.display='none';document.getElementById('user-screen').style.display='flex';renderUserGrid()}
-function renderManageList(){const users=getUsers(),el=document.getElementById('manage-list');el.innerHTML='';users.forEach(u=>{const row=document.createElement('div');row.className='mgr-row';row.innerHTML=`<span style="font-size:22px">${u.avatar}</span><span style="flex:1;font-weight:500;padding:0 8px">${u.name}</span>`;const btn=document.createElement('button');btn.className='btn btn-sm'+(users.length>1?' btn-danger':' btn-ghost');btn.textContent=users.length>1?'删除':'不可删除';btn.disabled=users.length<=1;btn.addEventListener('click',()=>{if(users.length<=1)return alert('至少保留一个用户');if(!confirm(`删除「${u.name}」及其所有数据？`))return;saveUsers(getUsers().filter(x=>x.id!==u.id));['sleep','body','sop','goals'].forEach(k=>LS.remove(u.id+'_'+k));if(CU&&CU.id===u.id)switchUser();else{renderManageList();renderUserGrid()}});row.appendChild(btn);el.appendChild(row)})}
-function addNewUser(){const name=document.getElementById('new-name').value.trim();const avatar=document.querySelector('#avatar-chips .chip.selected')?.textContent||'🙋';if(!name)return alert('请输入名字');const users=getUsers();users.push({id:'user_'+Date.now(),name,avatar});saveUsers(users);document.getElementById('new-name').value='';closeModal('add-user-modal');renderUserGrid();renderManageList()}
-function openModal(id){document.getElementById(id)?.classList.add('open');if(id==='manage-modal')renderManageList()}
-function closeModal(id){document.getElementById(id)?.classList.remove('open')}
-document.addEventListener('click',e=>{if(e.target.classList.contains('modal-overlay'))closeModal(e.target.id);const cl=e.target.dataset.close;if(cl)closeModal(cl)})
-function bindSingle(cid){document.querySelectorAll(`#${cid} .chip`).forEach(c=>c.addEventListener('click',()=>{document.querySelectorAll(`#${cid} .chip`).forEach(x=>x.classList.remove('selected'));c.classList.add('selected')}))}
-function bindMulti(cid){document.querySelectorAll(`#${cid} .chip`).forEach(c=>c.addEventListener('click',()=>c.classList.toggle('selected')))}
-function getSelected(cid){return [...document.querySelectorAll(`#${cid} .chip.selected`)].map(c=>c.textContent.trim())}
-function getSingleVal(cid){const s=document.querySelector(`#${cid} .chip.selected`);return s?(s.dataset.val||s.textContent.trim()):null}
-bindSingle('sp-chips');bindSingle('period-chips');bindMulti('relief-chips');bindSingle('goal-type-chips')
-document.querySelectorAll('#avatar-chips .chip').forEach(c=>c.addEventListener('click',()=>{document.querySelectorAll('#avatar-chips .chip').forEach(x=>x.classList.remove('selected'));c.classList.add('selected')}))
-function checkBackupBanner(){const last=LS.get('__last_backup__',null);if(!last){document.getElementById('backup-banner').style.display='flex';return}const days=(Date.now()-new Date(last).getTime())/86400000;document.getElementById('backup-banner').style.display=days>=14?'flex':'none';if(days>=14)document.getElementById('backup-text').textContent=`距离上次备份已${Math.floor(days)}天，建议导出备份`}
-function exportData(){const users=getUsers(),data={version:4,exported:new Date().toISOString(),users,userData:{}};users.forEach(u=>{data.userData[u.id]={sleep:LS.get(u.id+'_sleep',[]),body:LS.get(u.id+'_body',[]),sop:LS.get(u.id+'_sop',[]),goals:LS.get(u.id+'_goals',[])}});const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));a.download='health-backup.json';a.click();LS.set('__last_backup__',new Date().toISOString());checkBackupBanner();closeModal('io-modal')}
-function importData(){const file=document.getElementById('import-file').files[0];if(!file)return alert('请先选择文件');const r=new FileReader();r.onload=e=>{try{const data=JSON.parse(e.target.result);if(!data.users)return alert('格式不正确');if(!confirm('导入将覆盖当前所有数据？'))return;saveUsers(data.users);Object.entries(data.userData||{}).forEach(([uid,ud])=>['sleep','body','sop','goals'].forEach(k=>{if(ud[k])LS.set(uid+'_'+k,ud[k])}));LS.set('__last_backup__',new Date().toISOString());alert('恢复成功！页面将刷新。');location.reload()}catch(e){alert('读取失败')}};r.readAsText(file)}
-const pageRenderers={sleep:renderSleep,analysis:renderAnalysis,body:renderBody,sop:renderSOP,goals:renderGoals}
-document.querySelectorAll('nav button[data-page]').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('nav button[data-page]').forEach(b=>b.classList.remove('active'));document.getElementById('page-'+btn.dataset.page).classList.add('active');btn.classList.add('active');pageRenderers[btn.dataset.page]?.()}))
-document.getElementById('user-badge').addEventListener('click',switchUser);document.getElementById('manage-link').addEventListener('click',()=>openModal('manage-modal'));document.getElementById('add-user-btn').addEventListener('click',()=>{closeModal('manage-modal');openModal('add-user-modal')});document.getElementById('new-user-save-btn').addEventListener('click',addNewUser);document.getElementById('io-btn').addEventListener('click',()=>openModal('io-modal'))
-let sleepFilterDays=7,editingSleepId=null
-document.getElementById('sl-feel').addEventListener('input',function(){document.getElementById('sl-feel-val').textContent=feelLabels[this.value]})
-document.getElementById('sl-head').addEventListener('input',function(){document.getElementById('sl-head-val').textContent=this.value})
-document.getElementById('sl-neck').addEventListener('input',function(){document.getElementById('sl-neck-val').textContent=this.value})
-document.getElementById('relief-degree').addEventListener('input',function(){document.getElementById('relief-degree-val').textContent=this.value+'%'})
-function resetSleepModal(){editingSleepId=null;document.getElementById('sleep-modal-title').textContent='记录睡眠';document.getElementById('sl-date').value=today();document.getElementById('sl-sleep').value='';document.getElementById('sl-wake').value='';document.getElementById('sl-feel').value=3;document.getElementById('sl-feel-val').textContent='状态平稳';document.getElementById('sl-head').value=0;document.getElementById('sl-head-val').textContent='0';document.getElementById('sl-neck').value=0;document.getElementById('sl-neck-val').textContent='0';document.getElementById('sl-note').value='';document.querySelectorAll('#sp-chips .chip').forEach((c,i)=>c.classList.toggle('selected',i===0));document.querySelectorAll('#period-chips .chip').forEach((c,i)=>c.classList.toggle('selected',i===0))}
-document.getElementById('sleep-add-btn').addEventListener('click',()=>{resetSleepModal();openModal('sleep-modal')})
-document.getElementById('sl-save-btn').addEventListener('click',()=>{const date=document.getElementById('sl-date').value,sleep=document.getElementById('sl-sleep').value,wake=document.getElementById('sl-wake').value;if(!date||!sleep||!wake)return alert('请填写日期和时间');const entry={id:editingSleepId||Date.now(),date,sleep,wake,duration:+calcDur(sleep,wake).toFixed(2),feel:+document.getElementById('sl-feel').value,sp:getSingleVal('sp-chips'),head:+document.getElementById('sl-head').value,neck:+document.getElementById('sl-neck').value,period:getSingleVal('period-chips'),note:document.getElementById('sl-note').value.trim()};let logs=DB.get('sleep');if(editingSleepId){const idx=logs.findIndex(l=>String(l.id)===String(editingSleepId));if(idx>=0)logs[idx]=entry;else logs.push(entry)}else logs.push(entry);logs.sort((a,b)=>a.date!==b.date?b.date.localeCompare(a.date):b.sleep.localeCompare(a.sleep));DB.set('sleep',logs);closeModal('sleep-modal');renderSleep()})
-document.getElementById('sleep-filter-bar').addEventListener('click',e=>{const btn=e.target.closest('.filter-btn');if(!btn)return;document.querySelectorAll('#sleep-filter-bar .filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');sleepFilterDays=+btn.dataset.filter;renderSleep()})
-function splitSleepSegmentByDate(entry){const start=timeToMin(entry.sleep),end=timeToMin(entry.wake);if(end>start)return [{date:entry.date,start,end,raw:entry}];if(end===start)return [];return [{date:entry.date,start,end:1440,raw:entry},{date:addDate(entry.date,1),start:0,end,raw:entry}]}
-function renderGantt(logs,days){const dates=dateRange(days),todayStr=today(),segsByDate={};dates.forEach(d=>segsByDate[d]=[]);const dateSet=new Set(dates);logs.forEach(entry=>splitSleepSegmentByDate(entry).forEach(seg=>{if(dateSet.has(seg.date))segsByDate[seg.date].push(seg)}));dates.forEach(d=>segsByDate[d].sort((a,b)=>a.start-b.start));const ticks=[0,180,360,540,720,900,1080,1260,1440].map(v=>`<div class="sleep-time-tick" style="top:${v/1440*100}%">${v===1440?'24:00':minToClock(v)}</div>`).join('');const cols=dates.map(date=>`<div class="sleep-day-col${date===todayStr?' today':''}">${segsByDate[date].map((seg,i)=>{const top=seg.start/1440*100,height=Math.max((seg.end-seg.start)/1440*100,.7),tip=`${fmtDate(date)} ${minToClock(seg.start)} → ${seg.end===1440?'24:00':minToClock(seg.end)}`;return `<div class="sleep-block fragment-${i%4}" style="top:${top}%;height:${height}%" data-tip="${tip}"></div>`}).join('')}</div>`).join('');const labels=dates.map((date,i)=>`<div class="sleep-day-label">${days<=30||i%7===0||date===todayStr?fmtDateShort(date):''}</div>`).join('');const compact=days<=7?' compact':'';document.querySelector('.gantt-wrap').innerHTML=`<div class="sleep-distribution" aria-label="睡眠时间分布图"><div class="sleep-time-axis" aria-hidden="true"><div class="sleep-time-axis-inner">${ticks}</div><div class="sleep-time-axis-footer"></div></div><div class="sleep-date-scroll" id="sleep-date-scroll"><div class="sleep-plot${compact}">${cols}</div><div class="sleep-date-row${compact}">${labels}</div></div></div>`;const scroller=document.getElementById('sleep-date-scroll');if(scroller)requestAnimationFrame(()=>{scroller.scrollLeft=scroller.scrollWidth})}
-function renderSleepList(all){const listEl=document.getElementById('sleep-list');if(!all.length){listEl.innerHTML='<div class="empty">还没有记录</div>';return}const byDate={},dateOrder=[];all.forEach(l=>{if(!byDate[l.date]){byDate[l.date]=[];dateOrder.push(l.date)}byDate[l.date].push(l)});listEl.innerHTML=dateOrder.map(date=>{const segs=byDate[date],total=segs.reduce((s,l)=>s+l.duration,0),col=total>=7?'var(--good)':total>=6?'var(--warn)':'var(--bad)';return `<div class="sleep-day-group"><div class="sleep-day-header"><span class="sleep-day-date">${fmtDate(date)}</span><span class="sleep-day-total" style="color:${col}">${fmtH(total)}</span>${segs.length>1?`<span class="sleep-day-segs">${segs.length}段</span>`:''}</div>${segs.map(l=>{const badges=[];if(l.feel)badges.push(feelLabels[l.feel]);if(l.sp==='有')badges.push('睡眠瘫痪');if(l.head>0)badges.push(`头痛 ${l.head}/10`);if(l.neck>0)badges.push(`肩颈 ${l.neck}/10`);if(l.period&&l.period!=='非经期')badges.push(l.period);return `<div class="sleep-seg"><div style="flex:1"><div class="sleep-seg-time">${l.sleep} → ${l.wake} <span class="sleep-seg-dur">${fmtH(l.duration)}</span></div>${badges.length?`<div class="sleep-seg-badges">${badges.join(' · ')}</div>`:''}${l.note?`<div class="sleep-seg-badges">${l.note}</div>`:''}</div><button class="edit-btn" data-sid="${l.id}">编辑</button><button class="del-btn" data-sdel="${l.id}">✕</button></div>`}).join('')}</div>`}).join('');listEl.querySelectorAll('[data-sdel]').forEach(btn=>btn.addEventListener('click',()=>{if(!confirm('删除这段记录？'))return;DB.set('sleep',DB.get('sleep').filter(l=>String(l.id)!==btn.dataset.sdel));renderSleep()}));listEl.querySelectorAll('[data-sid]').forEach(btn=>btn.addEventListener('click',()=>{const l=DB.get('sleep').find(x=>String(x.id)===btn.dataset.sid);if(!l)return;editingSleepId=l.id;document.getElementById('sleep-modal-title').textContent='编辑睡眠';document.getElementById('sl-date').value=l.date;document.getElementById('sl-sleep').value=l.sleep;document.getElementById('sl-wake').value=l.wake;document.getElementById('sl-feel').value=l.feel||3;document.getElementById('sl-feel-val').textContent=feelLabels[l.feel||3];document.getElementById('sl-head').value=l.head||0;document.getElementById('sl-head-val').textContent=l.head||0;document.getElementById('sl-neck').value=l.neck||0;document.getElementById('sl-neck-val').textContent=l.neck||0;document.getElementById('sl-note').value=l.note||'';document.querySelectorAll('#sp-chips .chip').forEach(c=>c.classList.toggle('selected',c.dataset.val===l.sp));document.querySelectorAll('#period-chips .chip').forEach(c=>c.classList.toggle('selected',c.dataset.val===l.period));openModal('sleep-modal')}))}
-function renderSleep(){const all=DB.get('sleep');renderGantt(all,sleepFilterDays);renderSleepList(all)}
-function sleepStartScore(min){if(min>=1080&&min<1320)return {label:'异常提前',cls:'metric-bad',desc:'昼夜节律紊乱风险'};if(min>=1320||min===0)return {label:'正常',cls:'metric-good',desc:'22:00-00:00'};if(min>0&&min<120)return {label:'轻度延迟',cls:'metric-warn',desc:'00:00-02:00'};if(min>=120&&min<240)return {label:'中度延迟',cls:'metric-bad',desc:'02:00-04:00'};if(min>=240)return {label:'重度延迟',cls:'metric-bad',desc:'04:00以后'};return {label:'未分类',cls:'metric-warn',desc:'规则外时间'}}
-function normalizeSleepOnsetForStability(min){return min<720?min+1440:min}
-function calcStdMins(values){if(values.length<2)return 0;const avg=values.reduce((s,v)=>s+v,0)/values.length;return Math.sqrt(values.reduce((s,v)=>s+Math.pow(v-avg,2),0)/values.length)}
-function stabilityScore(firstSleepMins){if(firstSleepMins.length<3)return {label:'数据不足',cls:'metric-warn',hours:null,desc:'至少记录3天'};const std=calcStdMins(firstSleepMins.map(normalizeSleepOnsetForStability)),h=std/60;if(std<60)return {label:'非常规律',cls:'metric-good',hours:h,desc:'波动<1小时'};if(std<120)return {label:'一般',cls:'metric-warn',hours:h,desc:'波动1-2小时'};if(std<180)return {label:'不稳定',cls:'metric-bad',hours:h,desc:'波动2-3小时'};return {label:'严重紊乱',cls:'metric-bad',hours:h,desc:'波动≥3小时'}}
-function buildDailySnapshots(logs,days=30){const dates=dateRange(days),byDate={};logs.forEach(l=>{if(!byDate[l.date])byDate[l.date]=[];byDate[l.date].push(l)});return dates.map(date=>{const segs=byDate[date]||[];if(!segs.length)return {date,hasData:false};const totalSleep=segs.reduce((s,l)=>s+l.duration,0),segments=segs.length,firstSleepMin=Math.min(...segs.map(l=>timeToMin(l.sleep))),avgFeel=segs.filter(l=>l.feel).reduce((s,l,_,a)=>s+l.feel/a.length,0)||null,maxHead=Math.max(...segs.map(l=>l.head||0)),maxNeck=Math.max(...segs.map(l=>l.neck||0)),hasSP=segs.some(l=>l.sp==='有'),period=segs.find(l=>l.period&&l.period!=='非经期')?.period||'非经期';return {date,hasData:true,totalSleep,segments,firstSleepMin,firstSleepH:normalizeSleepOnsetForStability(firstSleepMin)/60,avgFeel,maxHead,maxNeck,hasSP,period}})}
-function renderAnalysis(){const all=DB.get('sleep'),snapshots=buildDailySnapshots(all,30),withData=snapshots.filter(s=>s.hasData),metricsEl=document.getElementById('sleep-metrics');if(!withData.length){metricsEl.innerHTML='<div class="empty" style="grid-column:1/-1">暂无数据</div>'}else{const avgSleep=withData.reduce((s,d)=>s+d.totalSleep,0)/withData.length,avgSegs=withData.reduce((s,d)=>s+d.segments,0)/withData.length,latest=withData[withData.length-1],phase=sleepStartScore(latest.firstSleepMin),stability=stabilityScore(withData.map(d=>d.firstSleepMin));let durLabel,durClass;if(avgSleep>=8){durLabel='充足';durClass='metric-good'}else if(avgSleep>=7){durLabel='基本充足';durClass='metric-good'}else if(avgSleep>=6){durLabel='略不足';durClass='metric-warn'}else if(avgSleep>=5){durLabel='不足';durClass='metric-bad'}else{durLabel='严重不足';durClass='metric-bad'}let contLabel,contClass;if(avgSegs<1.5){contLabel='连续';contClass='metric-good'}else if(avgSegs<2.5){contLabel='轻度碎片化';contClass='metric-warn'}else if(avgSegs<3.5){contLabel='中度碎片化';contClass='metric-warn'}else{contLabel='重度碎片化';contClass='metric-bad'}metricsEl.innerHTML=`<div class="metric-box"><div class="metric-label">睡眠时长</div><div class="metric-val ${durClass}">${durLabel}</div><div class="metric-sub">${avgSleep.toFixed(1)}h / 天</div></div><div class="metric-box"><div class="metric-label">睡眠连续性</div><div class="metric-val ${contClass}">${contLabel}</div><div class="metric-sub">${avgSegs.toFixed(1)}段 / 天</div></div><div class="metric-box"><div class="metric-label">首次入睡时间</div><div class="metric-val ${phase.cls}">${phase.label}</div><div class="metric-sub">${minToClock(latest.firstSleepMin)} · ${phase.desc}</div></div><div class="metric-box"><div class="metric-label">作息稳定性</div><div class="metric-val ${stability.cls}">${stability.label}</div><div class="metric-sub">${stability.hours==null?stability.desc:stability.hours.toFixed(1)+'h 标准差'}</div></div>`}renderHeatmap('headache-heatmap',buildDailySnapshots(all,60),d=>d.maxHead,'头痛',[255,59,48]);renderHeatmap('neck-heatmap',buildDailySnapshots(all,60),d=>d.maxNeck,'肩颈',[255,149,0]);renderPatterns(buildDailySnapshots(all,60));const uniqueDays=new Set(all.map(l=>l.date)).size;document.getElementById('pred-days').textContent=uniqueDays;document.getElementById('pred-need').textContent=Math.max(0,60-uniqueDays)}
-function renderHeatmap(elId,snapshots,valueFn,label,color){const el=document.getElementById(elId),withData=snapshots.filter(s=>s.hasData);if(!withData.length){el.innerHTML='<div class="empty">暂无数据</div>';return}const rows=[];let row=[];const first=new Date(snapshots[0].date+'T00:00:00');for(let i=0;i<first.getDay();i++)row.push(null);snapshots.forEach(s=>{row.push(s);if(row.length===7){rows.push(row);row=[]}});if(row.length)rows.push(row);const maxVal=Math.max(...withData.map(s=>valueFn(s)),1),days=['日','一','二','三','四','五','六'];let html=`<div class="heatmap-date-row"><div class="heatmap-date-label"></div>${days.map(d=>`<div class="heatmap-date-cell">${d}</div>`).join('')}</div><div class="heatmap-grid">`;rows.forEach((row,ri)=>{const firstS=row.find(s=>s);html+=`<div class="heatmap-row"><span class="heatmap-label">${firstS&&ri%2===0?fmtDateShort(firstS.date):''}</span>`;row.forEach(s=>{if(!s){html+='<div class="heatmap-cell" style="background:#f2f2f7"></div>';return}const v=s.hasData?valueFn(s):0,alpha=v===0?.07:.15+(v/maxVal)*.75;html+=`<div class="heatmap-cell" style="background:rgba(${color[0]},${color[1]},${color[2]},${alpha})" data-tip="${fmtDate(s.date)} ${label}:${v}/10"></div>`});html+='</div>'});el.innerHTML=html+'</div>'}
-function renderPatterns(snapshots){const el=document.getElementById('pattern-analysis'),withData=snapshots.filter(s=>s.hasData);if(withData.length<5){el.innerHTML='<div class="insight-empty">数据积累中，建议至少记录14天后查看规律分析</div>';return}const lines=[],headDays=withData.filter(s=>s.maxHead>0);if(headDays.length>=2){const headShort=headDays.filter(s=>s.totalSleep<6),pct=Math.round(headShort.length/headDays.length*100);lines.push({text:`最近 ${headDays.length} 次头痛中，${headShort.length} 次（${pct}%）发生在睡眠不足6小时后`,strong:pct>=60});const headPeriod=headDays.filter(s=>s.period==='经期中'||s.period==='经期前');if(headDays.length>=3&&headPeriod.length>=1){const p=Math.round(headPeriod.length/headDays.length*100);lines.push({text:`${headDays.length} 次头痛中 ${headPeriod.length} 次（${p}%）发生在经期前或经期中`,strong:p>=50})}}const neckDays=withData.filter(s=>s.maxNeck>0);if(neckDays.length>=2){const neckPoor=neckDays.filter(s=>s.avgFeel&&s.avgFeel<=2),pct=Math.round(neckPoor.length/neckDays.length*100);if(pct>=40)lines.push({text:`${neckDays.length} 次肩颈痛中 ${neckPoor.length} 次（${pct}%）睡醒感受较差（≤2/5）`,strong:pct>=60});const neckLate=neckDays.filter(s=>s.firstSleepH>26);if(neckLate.length>=2)lines.push({text:`肩颈痛中 ${Math.round(neckLate.length/neckDays.length*100)}% 在凌晨2点后入睡的情况下发生`,strong:false})}const spDays=withData.filter(s=>s.hasSP);if(spDays.length>=1){const freq=spDays.length/withData.length*100;lines.push({text:`睡眠瘫痪出现 ${spDays.length} 次，占记录天数的 ${Math.round(freq)}%`,strong:freq>=20})}const fragDays=withData.filter(s=>s.segments>=3);if(fragDays.length>=3){const fragHead=fragDays.filter(s=>s.maxHead>0);if(fragHead.length>=2)lines.push({text:`重度碎片化睡眠（≥3段）的天数中，${Math.round(fragHead.length/fragDays.length*100)}% 伴随头痛`,strong:true})}if(!lines.length){el.innerHTML='<div class="insight-empty">暂未发现明显规律，继续记录后再来查看</div>';return}el.innerHTML=`<div class="insight-block"><div class="insight-block-title">自动规律分析</div>${lines.map(l=>`<div class="insight-line${l.strong?' strong':''}">${l.strong?'⚠️ ':'· '}${l.text}</div>`).join('')}</div>`}
-let bodyFilter='all',reliefTargetDate=null
-document.getElementById('body-filter-bar').addEventListener('click',e=>{const btn=e.target.closest('.filter-btn');if(!btn)return;document.querySelectorAll('#body-filter-bar .filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');bodyFilter=btn.dataset.filter;renderBody()})
-document.getElementById('relief-save-btn').addEventListener('click',()=>{if(!reliefTargetDate)return;const logs=DB.get('body'),entry={date:reliefTargetDate,reliefs:getSelected('relief-chips'),degree:+document.getElementById('relief-degree').value,note:document.getElementById('relief-note').value.trim()},idx=logs.findIndex(l=>l.date===reliefTargetDate);if(idx>=0)logs[idx]=entry;else logs.push(entry);logs.sort((a,b)=>b.date.localeCompare(a.date));DB.set('body',logs);closeModal('relief-modal');renderBody()})
-function openReliefModal(date,segs){reliefTargetDate=date;document.getElementById('relief-modal-title').textContent=`缓解记录 · ${fmtDate(date)}`;const syms=[];segs.forEach(l=>{if(l.head>0)syms.push(`头痛 ${l.head}/10`);if(l.neck>0)syms.push(`肩颈痛 ${l.neck}/10`);if(l.sp==='有')syms.push('睡眠瘫痪');if(l.period&&l.period!=='非经期')syms.push(l.period)});document.getElementById('relief-symptom-summary').textContent=syms.length?'当日症状：'+syms.join('、'):'当日无明显症状';document.querySelectorAll('#relief-chips .chip').forEach(c=>c.classList.remove('selected'));document.getElementById('relief-degree').value=50;document.getElementById('relief-degree-val').textContent='50%';document.getElementById('relief-note').value='';const existing=DB.get('body').find(b=>b.date===date);if(existing){document.querySelectorAll('#relief-chips .chip').forEach(c=>{if(existing.reliefs?.includes(c.textContent.trim()))c.classList.add('selected')});document.getElementById('relief-degree').value=existing.degree??50;document.getElementById('relief-degree-val').textContent=(existing.degree??50)+'%';document.getElementById('relief-note').value=existing.note||''}openModal('relief-modal')}
-function renderBody(){const sleepLogs=DB.get('sleep'),bodyLogs=DB.get('body'),byDate={};sleepLogs.forEach(l=>{if(!byDate[l.date])byDate[l.date]=[];byDate[l.date].push(l)});let dates=Object.keys(byDate).sort((a,b)=>b.localeCompare(a));if(bodyFilter==='头痛')dates=dates.filter(d=>byDate[d].some(l=>l.head>0));else if(bodyFilter==='肩颈')dates=dates.filter(d=>byDate[d].some(l=>l.neck>0));else if(bodyFilter==='经期')dates=dates.filter(d=>byDate[d].some(l=>l.period&&l.period!=='非经期'));const el=document.getElementById('body-list');if(!dates.length){el.innerHTML='<div class="empty">暂无符合条件的记录</div>';return}el.innerHTML=dates.map(date=>{const segs=byDate[date],bd=bodyLogs.find(b=>b.date===date),syms=[];segs.forEach(l=>{if(l.head>0)syms.push(`<span style="font-size:11px;padding:2px 7px;border-radius:4px;border:1px solid rgba(255,59,48,.3);color:var(--bad);background:rgba(255,59,48,.06)">头痛 ${l.head}/10</span>`);if(l.neck>0)syms.push(`<span style="font-size:11px;padding:2px 7px;border-radius:4px;border:1px solid rgba(255,149,0,.3);color:var(--warn);background:rgba(255,149,0,.06)">肩颈 ${l.neck}/10</span>`);if(l.sp==='有')syms.push(`<span style="font-size:11px;padding:2px 7px;border-radius:4px;border:1px solid rgba(88,86,214,.3);color:#5856d6;background:rgba(88,86,214,.06)">睡眠瘫痪</span>`);if(l.period&&l.period!=='非经期')syms.push(`<span style="font-size:11px;padding:2px 7px;border-radius:4px;border:1px solid rgba(255,149,0,.3);color:var(--warn);background:rgba(255,149,0,.06)">${l.period}</span>`)});const feelAvg=segs.filter(l=>l.feel).reduce((s,l,_,a)=>s+l.feel/a.length,0),feelTxt=feelAvg?feelLabels[Math.round(feelAvg)]:'';const reliefHtml=bd?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">${bd.reliefs?.map(r=>`<span style="font-size:11px;padding:2px 7px;border-radius:4px;border:1px solid rgba(52,199,89,.3);color:var(--good);background:rgba(52,199,89,.06)">${r}</span>`).join('')||''}${bd.degree!=null?`<span style="font-size:11px;padding:2px 7px;border-radius:4px;background:rgba(0,122,255,.08);color:var(--accent)">缓解${bd.degree}%</span>`:''}</div>${bd.note?`<div style="font-size:12px;color:var(--muted);margin-top:3px">${bd.note}</div>`:''}`:`<div style="font-size:12px;color:var(--muted);margin-top:4px">未记录缓解</div>`;return `<div style="padding:11px 0;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;gap:8px;margin-bottom:5px"><span style="font-size:11px;color:var(--muted)">${fmtDate(date)}</span>${feelTxt?`<span style="font-size:11px;color:var(--accent)">睡眠质量：${feelTxt}</span>`:''}<button class="edit-btn" style="margin-left:auto" data-body-date="${date}">+ 缓解记录</button></div><div style="display:flex;flex-wrap:wrap;gap:4px">${syms.join('')}</div>${reliefHtml}</div>`}).join('');el.querySelectorAll('[data-body-date]').forEach(btn=>btn.addEventListener('click',()=>openReliefModal(btn.dataset.bodyDate,byDate[btn.dataset.bodyDate]||[])))}
-let editingSopId=null
-document.getElementById('sop-add-btn').addEventListener('click',()=>{editingSopId=null;document.getElementById('sop-modal-title').textContent='添加 SOP';['sop-name','sop-cat','sop-steps-input','sop-note'].forEach(id=>document.getElementById(id).value='');openModal('sop-modal')})
-document.getElementById('sop-save-btn').addEventListener('click',()=>{const name=document.getElementById('sop-name').value.trim(),steps=document.getElementById('sop-steps-input').value.trim();if(!name||!steps)return alert('请填写名称和步骤');const sops=DB.get('sop'),entry={name,cat:document.getElementById('sop-cat').value.trim(),steps:steps.split('\n').filter(s=>s.trim()),note:document.getElementById('sop-note').value.trim()};if(editingSopId){const idx=sops.findIndex(s=>String(s.id)===String(editingSopId));if(idx>=0)sops[idx]={...sops[idx],...entry}}else sops.push({id:Date.now(),created:today(),...entry});DB.set('sop',sops);closeModal('sop-modal');renderSOP()})
-document.getElementById('sop-export-btn').addEventListener('click',()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(DB.get('sop'),null,2)],{type:'application/json'}));a.download='sop-export.json';a.click()})
-function renderSOP(){const sops=DB.get('sop'),el=document.getElementById('sop-list');if(!sops.length){el.innerHTML='<div class="empty">还没有 SOP</div>';return}el.innerHTML=sops.map(s=>`<div class="sop-item"><div style="display:flex;align-items:flex-start"><div style="flex:1;cursor:pointer" data-sop-toggle="${s.id}"><div style="font-weight:500">${s.name}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">${s.cat||'未分类'} · ${s.steps.length}步 ▾</div></div><button class="edit-btn" data-sop-edit="${s.id}">编辑</button><button class="del-btn" data-sop-del="${s.id}">✕</button></div><div class="sop-steps-body" id="sop-body-${s.id}"><ol>${s.steps.map(st=>`<li>${st}</li>`).join('')}</ol>${s.note?`<div style="margin-top:5px;font-size:12px;color:var(--muted)">${s.note}</div>`:''}</div></div>`).join('');el.querySelectorAll('[data-sop-toggle]').forEach(e=>e.addEventListener('click',()=>document.getElementById('sop-body-'+e.dataset.sopToggle)?.classList.toggle('open')));el.querySelectorAll('[data-sop-del]').forEach(btn=>btn.addEventListener('click',()=>{if(!confirm('删除？'))return;DB.set('sop',DB.get('sop').filter(s=>String(s.id)!==btn.dataset.sopDel));renderSOP()}));el.querySelectorAll('[data-sop-edit]').forEach(btn=>btn.addEventListener('click',()=>{const s=DB.get('sop').find(x=>String(x.id)===btn.dataset.sopEdit);if(!s)return;editingSopId=s.id;document.getElementById('sop-modal-title').textContent='编辑 SOP';document.getElementById('sop-name').value=s.name;document.getElementById('sop-cat').value=s.cat||'';document.getElementById('sop-steps-input').value=s.steps.join('\n');document.getElementById('sop-note').value=s.note||'';openModal('sop-modal')}))}
-let editingGoalId=null
-const DEFAULT_TAGS=['健康','家务','工作','学习','生活']
-function getAllTags(){return [...new Set([...DEFAULT_TAGS,...LS.get('__goal_tags__',[])])]}function saveTag(t){const tags=LS.get('__goal_tags__',[]);if(!tags.includes(t)){tags.push(t);LS.set('__goal_tags__',tags)}}
-function renderGoalTagChips(sel=[]){const c=document.getElementById('goal-tag-chips');c.innerHTML='';getAllTags().forEach(t=>{const s=document.createElement('span');s.className='chip'+(sel.includes(t)?' selected':'');s.textContent=t;s.addEventListener('click',()=>s.classList.toggle('selected'));c.appendChild(s)})}
-document.getElementById('goal-tag-input').addEventListener('keydown',e=>{if(e.key!=='Enter')return;e.preventDefault();const v=e.target.value.trim();if(!v)return;saveTag(v);renderGoalTagChips([...getSelected('goal-tag-chips'),v]);e.target.value=''})
-document.getElementById('goal-add-btn').addEventListener('click',()=>{editingGoalId=null;document.getElementById('goal-modal-title').textContent='添加目标 / 待办';document.getElementById('goal-text').value='';document.getElementById('goal-date').value='';document.querySelectorAll('#goal-type-chips .chip').forEach((c,i)=>c.classList.toggle('selected',i===0));renderGoalTagChips();openModal('goal-modal')})
-document.getElementById('goal-save-btn').addEventListener('click',()=>{const text=document.getElementById('goal-text').value.trim();if(!text)return alert('请填写内容');const tags=getSelected('goal-tag-chips');tags.forEach(saveTag);const goals=DB.get('goals'),entry={text,tags,type:getSingleVal('goal-type-chips')||'long',dueDate:document.getElementById('goal-date').value||null};if(editingGoalId){const idx=goals.findIndex(g=>String(g.id)===String(editingGoalId));if(idx>=0)goals[idx]={...goals[idx],...entry}}else goals.push({id:Date.now(),done:false,created:today(),...entry});DB.set('goals',goals);closeModal('goal-modal');renderGoals()})
-function renderGoals(){const goals=DB.get('goals'),renderList=(list,elId)=>{const el=document.getElementById(elId);el.innerHTML='';if(!list.length){el.innerHTML='<div class="empty">暂无</div>';return}list.forEach(g=>{const div=document.createElement('div');div.className='goal-item';div.innerHTML=`<div class="g-check${g.done?' done':''}"></div><div style="flex:1"><div class="g-text${g.done?' done':''}">${g.text}</div><div class="g-meta">${g.dueDate?`<span>${fmtDate(g.dueDate)}</span>`:''} ${g.tags?.map(t=>`<span class="g-tag">${t}</span>`).join('')||''}</div></div><button class="edit-btn">编辑</button><button class="del-btn">✕</button>`;div.querySelector('.g-check').addEventListener('click',()=>{const gs=DB.get('goals'),gx=gs.find(x=>String(x.id)===String(g.id));if(gx)gx.done=!gx.done;DB.set('goals',gs);renderGoals()});div.querySelector('.edit-btn').addEventListener('click',()=>{editingGoalId=g.id;document.getElementById('goal-modal-title').textContent='编辑';document.getElementById('goal-text').value=g.text;document.getElementById('goal-date').value=g.dueDate||'';document.querySelectorAll('#goal-type-chips .chip').forEach(c=>c.classList.toggle('selected',c.dataset.val===g.type));renderGoalTagChips(g.tags||[]);openModal('goal-modal')});div.querySelector('.del-btn').addEventListener('click',()=>{DB.set('goals',DB.get('goals').filter(x=>String(x.id)!==String(g.id)));renderGoals()});el.appendChild(div)})};renderList(goals.filter(g=>g.type==='long'),'goal-long');renderList(goals.filter(g=>g.type==='todo'),'goal-todo')}
-(function(){const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);if(isIOS&&!window.navigator.standalone&&!localStorage.getItem('__ios_tip__')){document.getElementById('ios-tip').style.display='block';localStorage.setItem('__ios_tip__','1')}})()
-initApp()
-</script>
-</body>
-</html>
+睡眠统计逻辑修改
+
+修改睡眠统计与分析逻辑：
+
+1. 睡眠归属规则
+
+不要按自然日（0:00-24:00）切割睡眠。
+
+改为：
+
+所有睡眠段归属于“醒来的日期（wake date）”。
+
+例如：
+
+* 6月24日 22:00 → 6月25日 05:00
+    归属 6月25日
+* 6月25日 22:00 → 6月26日 05:00
+    归属 6月26日
+
+2. 每日总睡眠
+
+同一天的多段睡眠需要自动累加：
+
+例如：
+
+6月25日：
+
+* 02:00-05:00
+* 14:00-16:00
+
+则：
+
+每日总睡眠 = 5小时
+
+3. 所有分析统一使用每日总睡眠
+
+以下模块全部基于“醒来日期对应的总睡眠时长”：
+
+* 平均睡眠时长
+* 睡眠评级
+* 睡眠趋势
+* 睡眠与头痛相关性
+* 睡眠与肩颈痛相关性
+* 睡眠与经期相关性
+* 风险预测
+
+不要使用自然日切割后的睡眠数据。
+
+4. 睡眠评级（科学版）
+
+基于每日总睡眠：
+
+* ≥ 9h → 偏长
+* 7–9h → 充足
+* 6–7h → 略不足
+* 4–6h → 不足
+* < 4h → 严重不足
+
+同时显示：
+
+* 平均睡眠时长
+* 睡眠评级
+* 最近7天评级
