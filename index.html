@@ -1297,6 +1297,256 @@ function renderGoals(){
 }
 
 // ══════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════
+// SLEEP FIX PATCH
+// 修复：首次入睡判定、30天稳定性、Apple Health 风格睡眠时间图
+// ══════════════════════════════════════════════════════════════
+
+function timeToMin(t){
+  const [h,m]=String(t||'00:00').split(':').map(Number)
+  return h*60+m
+}
+
+function minToTime(min){
+  const m=((Math.round(min)%1440)+1440)%1440
+  const h=Math.floor(m/60)
+  const mm=m%60
+  return String(h).padStart(2,'0')+':'+String(mm).padStart(2,'0')
+}
+
+function addDate(date,offset){
+  const d=new Date(date+'T00:00:00')
+  d.setDate(d.getDate()+offset)
+  return d.toISOString().slice(0,10)
+}
+
+function sleepStartScore(min){
+  // 必须按首次入睡的钟表时间判定，不使用“是否夜间睡觉”的默认逻辑。
+  if(min>=18*60 && min<22*60){
+    return {label:'异常提前', cls:'metric-bad', desc:'昼夜节律紊乱风险'}
+  }
+  if(min>=22*60 || min===0){
+    return {label:'正常', cls:'metric-good', desc:'22:00-00:00'}
+  }
+  if(min>0 && min<2*60){
+    return {label:'轻度延迟', cls:'metric-warn', desc:'00:00-02:00'}
+  }
+  if(min>=2*60 && min<4*60){
+    return {label:'中度延迟', cls:'metric-bad', desc:'02:00-04:00'}
+  }
+  if(min>=4*60){
+    return {label:'重度延迟', cls:'metric-bad', desc:'04:00以后'}
+  }
+  return {label:'未分类', cls:'metric-warn', desc:'规则外时间'}
+}
+
+function normalizeSleepOnsetForStability(min){
+  // 把 00:00-12:00 视为上一晚的延续，避免 23:30 和 00:30 被算成相差 23 小时。
+  return min<12*60 ? min+1440 : min
+}
+
+function calcStdMins(values){
+  if(values.length<2)return 0
+  const avg=values.reduce((s,v)=>s+v,0)/values.length
+  const variance=values.reduce((s,v)=>s+Math.pow(v-avg,2),0)/values.length
+  return Math.sqrt(variance)
+}
+
+function stabilityScore(firstSleepMins){
+  if(firstSleepMins.length<3){
+    return {label:'数据不足', cls:'metric-warn', hours:null, desc:'至少记录3天'}
+  }
+  const normalized=firstSleepMins.map(normalizeSleepOnsetForStability)
+  const std=calcStdMins(normalized)
+  const h=std/60
+  if(std<60)return {label:'非常规律', cls:'metric-good', hours:h, desc:'波动<1小时'}
+  if(std<120)return {label:'一般', cls:'metric-warn', hours:h, desc:'波动1-2小时'}
+  if(std<180)return {label:'不稳定', cls:'metric-bad', hours:h, desc:'波动2-3小时'}
+  return {label:'严重紊乱', cls:'metric-bad', hours:h, desc:'波动≥3小时'}
+}
+
+function splitSleepSegmentByDate(entry){
+  const start=timeToMin(entry.sleep)
+  const end=timeToMin(entry.wake)
+  if(end>start){
+    return [{date:entry.date,start,end,raw:entry}]
+  }
+  if(end===start){
+    return []
+  }
+  return [
+    {date:entry.date,start,end:1440,raw:entry},
+    {date:addDate(entry.date,1),start:0,end,raw:entry}
+  ]
+}
+
+// X=日期，Y=0-1440分钟。跨夜睡眠会拆成两天两块。
+function renderGantt(logs,days){
+  const dates=dateRange(days)
+  const dateSet=new Set(dates)
+  const segsByDate={}
+  dates.forEach(d=>segsByDate[d]=[])
+
+  logs.forEach(entry=>{
+    splitSleepSegmentByDate(entry).forEach(seg=>{
+      if(dateSet.has(seg.date))segsByDate[seg.date].push(seg)
+    })
+  })
+
+  dates.forEach(d=>segsByDate[d].sort((a,b)=>a.start-b.start))
+  const maxSegs=Math.max(...dates.map(d=>segsByDate[d].length),1)
+  const segColors=[
+    'rgba(0,122,255,0.78)',
+    'rgba(88,86,214,0.68)',
+    'rgba(52,199,89,0.58)',
+    'rgba(255,149,0,0.54)'
+  ]
+
+  const datasets=[]
+  for(let i=0;i<maxSegs;i++){
+    datasets.push({
+      label:'睡眠段 '+(i+1),
+      data:dates.map(d=>{
+        const seg=segsByDate[d][i]
+        return seg ? [seg.start,seg.end] : null
+      }),
+      backgroundColor:segColors[i%segColors.length],
+      borderRadius:3,
+      borderSkipped:false,
+      barPercentage:0.74,
+      categoryPercentage:0.82
+    })
+  }
+
+  if(ganttChart)ganttChart.destroy()
+  const canvas=document.getElementById('gantt-chart')
+  canvas.parentElement.style.width=Math.max(360,dates.length*36)+'px'
+  canvas.style.width='100%'
+
+  ganttChart=new Chart(canvas,{
+    type:'bar',
+    data:{labels:dates.map(fmtDateShort),datasets},
+    options:{
+      responsive:false,
+      maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{
+          title:ctx=>dates[ctx[0]?.dataIndex]?fmtDate(dates[ctx[0].dataIndex]):'',
+          label:ctx=>{
+            const v=ctx.raw
+            if(!v)return ''
+            return ` ${minToTime(v[0])} → ${minToTime(v[1])} (${fmtH((v[1]-v[0])/60)})`
+          }
+        }}
+      },
+      scales:{
+        x:{
+          ticks:{color:'#8e8e93',font:{size:10},maxRotation:45},
+          grid:{color:'rgba(0,0,0,.04)'}
+        },
+        y:{
+          min:0,
+          max:1440,
+          reverse:true,
+          ticks:{
+            stepSize:120,
+            color:'#8e8e93',
+            font:{size:10},
+            callback:v=>v===1440?'24:00':minToTime(v)
+          },
+          grid:{color:'rgba(0,0,0,.04)'}
+        }
+      }
+    }
+  })
+}
+
+function buildDailySnapshots(logs,days=30){
+  const dates=dateRange(days)
+  const byDate={}
+  logs.forEach(l=>{
+    if(!byDate[l.date])byDate[l.date]=[]
+    byDate[l.date].push(l)
+  })
+
+  return dates.map(date=>{
+    const segs=byDate[date]||[]
+    if(!segs.length)return {date,hasData:false}
+
+    const totalSleep=segs.reduce((s,l)=>s+l.duration,0)
+    const segments=segs.length
+    const firstSleepMin=Math.min(...segs.map(l=>timeToMin(l.sleep)))
+    const firstSleepH=normalizeSleepOnsetForStability(firstSleepMin)/60
+    const avgFeel=segs.filter(l=>l.feel).reduce((s,l,_,a)=>s+l.feel/a.length,0)||null
+    const maxHead=Math.max(...segs.map(l=>l.head||0))
+    const maxNeck=Math.max(...segs.map(l=>l.neck||0))
+    const hasSP=segs.some(l=>l.sp==='有')
+    const period=segs.find(l=>l.period&&l.period!=='非经期')?.period||'非经期'
+
+    return {date,hasData:true,totalSleep,segments,firstSleepMin,firstSleepH,avgFeel,maxHead,maxNeck,hasSP,period}
+  })
+}
+
+function renderAnalysis(){
+  const all=DB.get('sleep')
+  const snapshots=buildDailySnapshots(all,30)
+  const withData=snapshots.filter(s=>s.hasData)
+  const metricsEl=document.getElementById('sleep-metrics')
+
+  if(!withData.length){
+    metricsEl.innerHTML='<div class="empty" style="grid-column:1/-1">暂无数据</div>'
+  }else{
+    const avgSleep=withData.reduce((s,d)=>s+d.totalSleep,0)/withData.length
+    const avgSegs=withData.reduce((s,d)=>s+d.segments,0)/withData.length
+    const latest=withData[withData.length-1]
+    const phase=sleepStartScore(latest.firstSleepMin)
+    const stability=stabilityScore(withData.map(d=>d.firstSleepMin))
+
+    let durLabel,durClass
+    if(avgSleep>=8){durLabel='充足';durClass='metric-good'}
+    else if(avgSleep>=7){durLabel='基本充足';durClass='metric-good'}
+    else if(avgSleep>=6){durLabel='略不足';durClass='metric-warn'}
+    else if(avgSleep>=5){durLabel='不足';durClass='metric-bad'}
+    else{durLabel='严重不足';durClass='metric-bad'}
+
+    let contLabel,contClass
+    if(avgSegs<1.5){contLabel='连续';contClass='metric-good'}
+    else if(avgSegs<2.5){contLabel='轻度碎片化';contClass='metric-warn'}
+    else if(avgSegs<3.5){contLabel='中度碎片化';contClass='metric-warn'}
+    else{contLabel='重度碎片化';contClass='metric-bad'}
+
+    metricsEl.innerHTML=`
+      <div class="metric-box">
+        <div class="metric-label">睡眠时长</div>
+        <div class="metric-val ${durClass}">${durLabel}</div>
+        <div class="metric-sub">${avgSleep.toFixed(1)}h / 天</div>
+      </div>
+      <div class="metric-box">
+        <div class="metric-label">睡眠连续性</div>
+        <div class="metric-val ${contClass}">${contLabel}</div>
+        <div class="metric-sub">${avgSegs.toFixed(1)}段 / 天</div>
+      </div>
+      <div class="metric-box">
+        <div class="metric-label">首次入睡时间</div>
+        <div class="metric-val ${phase.cls}">${phase.label}</div>
+        <div class="metric-sub">${minToTime(latest.firstSleepMin)} · ${phase.desc}</div>
+      </div>
+      <div class="metric-box">
+        <div class="metric-label">作息稳定性</div>
+        <div class="metric-val ${stability.cls}">${stability.label}</div>
+        <div class="metric-sub">${stability.hours==null?stability.desc:stability.hours.toFixed(1)+'h 标准差'}</div>
+      </div>`
+  }
+
+  renderHeatmap('headache-heatmap',buildDailySnapshots(all,60),d=>d.maxHead,'头痛',[255,59,48])
+  renderHeatmap('neck-heatmap',buildDailySnapshots(all,60),d=>d.maxNeck,'肩颈',[255,149,0])
+  renderPatterns(buildDailySnapshots(all,60))
+
+  const uniqueDays=new Set(all.map(l=>l.date)).size
+  document.getElementById('pred-days').textContent=uniqueDays
+  document.getElementById('pred-need').textContent=Math.max(0,60-uniqueDays)
+}
 // INIT
 // ══════════════════════════════════════════════════════════════
 ;(function(){
