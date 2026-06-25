@@ -233,9 +233,9 @@ input[type=date]{color:var(--text)}
       <div><label>起床时间</label><input type="time" id="sl-wake"></div>
     </div>
     <div class="rng-wrap">
-      <div class="rng-header"><label style="margin:0">睡醒感受</label><span class="rng-val" id="sl-feel-val">一般</span></div>
+      <div class="rng-header"><label style="margin:0">睡醒感受</label><span class="rng-val" id="sl-feel-val">状态平稳</span></div>
       <input type="range" min="1" max="5" value="3" id="sl-feel">
-      <div class="feel-labels"><span>极度疲倦</span><span>仍然困倦</span><span>一般</span><span>比较精神</span><span>精力充沛</span></div>
+      <div class="feel-labels"><span>极度疲倦</span><span>仍然困倦</span><span>状态平稳</span><span>比较精神</span><span>精力充沛</span></div>
     </div>
     <label>睡眠瘫痪</label>
     <div class="chips" id="sp-chips">
@@ -526,7 +526,7 @@ function timeToH(t){const[h,m]=t.split(':').map(Number);return h+m/60}
 function calcDur(s,w){let d=timeToH(w)-timeToH(s);if(d<0)d+=24;return d}
 function fmtH(h){const hh=Math.floor(h),mm=Math.round((h-hh)*60);return`${hh}h${mm?mm+'m':''}`}
 
-const feelLabels={1:'极度疲倦',2:'仍然困倦',3:'一般',4:'比较精神',5:'精力充沛'}
+const feelLabels={1:'极度疲倦',2:'仍然困倦',3:'状态平稳',4:'比较精神',5:'精力充沛'}
 
 // ── BACKUP ────────────────────────────────────────────────────
 function checkBackupBanner(){
@@ -637,7 +637,7 @@ document.getElementById('sl-save-btn').addEventListener('click',()=>{
   }
   let logs=DB.get('sleep')
   if(editingSleepId){
-    const idx=logs.findIndex(l=>l.id===editingSleepId)
+    const idx=logs.findIndex(l=>String(l.id)===String(editingSleepId))
     if(idx>=0)logs[idx]=entry; else logs.push(entry)
   } else {
     logs.push(entry)
@@ -674,77 +674,111 @@ function renderSleep(){
     document.getElementById('st-days').textContent=dates.length
   }
 
-  // chart: sleep distribution 0-24h
+  // chart: horizontal bar — y=time slots (0-24h), x=total hours slept in that slot across filtered days
   const filtered=getFilteredSleep()
-  const hours=Array(24).fill(0)
+  const slotMins=Array(48).fill(0) // 30-min slots
   filtered.forEach(l=>{
     let s=timeToH(l.sleep),w=timeToH(l.wake)
     if(w<s)w+=24
-    for(let h=Math.floor(s);h<w;h++){
-      const hh=h%24
-      const start=Math.max(s,h),end=Math.min(w,h+1)
-      hours[hh]+=(end-start)
+    for(let slot=0;slot<48;slot++){
+      const slotStart=slot*0.5,slotEnd=slotStart+0.5
+      if(w>slotStart&&s<slotEnd){
+        const overlap=Math.min(w,slotEnd)-Math.max(s,slotStart)
+        if(overlap>0)slotMins[slot%48]+=overlap
+      }
     }
   })
-  const maxH=Math.max(...hours,1)
+  const n=Math.max(filtered.length,1)
+  const slotAvg=slotMins.map(v=>+(v/n).toFixed(2))
+  const slotLabels=Array.from({length:48},(_,i)=>{
+    const h=Math.floor(i/2),m=i%2===0?'00':'30'
+    return i%2===0?`${String(h).padStart(2,'0')}:00`:''
+  })
   if(sleepChart)sleepChart.destroy()
   const ctx=document.getElementById('sleep-chart').getContext('2d')
   sleepChart=new Chart(ctx,{
     type:'bar',
     data:{
-      labels:Array.from({length:24},(_,i)=>`${i}`),
+      labels:slotLabels,
       datasets:[{
-        data:hours.map(v=>+(v/Math.max(filtered.length,1)).toFixed(2)),
-        backgroundColor:'rgba(0,122,255,0.6)',
-        borderRadius:3,borderSkipped:false
+        data:slotAvg,
+        backgroundColor:slotAvg.map(v=>v>0.3?'rgba(0,122,255,0.7)':v>0?'rgba(0,122,255,0.3)':'rgba(0,0,0,0)'),
+        borderRadius:2,borderSkipped:false,barPercentage:1,categoryPercentage:1
       }]
     },
     options:{
       responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`平均 ${c.raw.toFixed(1)} 小时`}}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{
+        title:(_)=>'',
+        label:c=>{const h=Math.floor(c.dataIndex/2),m=c.dataIndex%2===0?'00':'30';return`${String(h).padStart(2,'0')}:${m}  平均 ${c.raw.toFixed(2)}h`}
+      }}},
       scales:{
-        x:{grid:{color:'rgba(0,0,0,.04)'},ticks:{color:'#8e8e93',font:{size:10},maxRotation:0}},
-        y:{grid:{color:'rgba(0,0,0,.04)'},ticks:{color:'#8e8e93',font:{size:10}},min:0,title:{display:true,text:'平均时长(h)',color:'#8e8e93',font:{size:9}}}
+        x:{grid:{color:'rgba(0,0,0,.03)'},ticks:{color:'#8e8e93',font:{size:9},maxRotation:0,autoSkip:false},
+          title:{display:true,text:'时间段（0–24时）',color:'#8e8e93',font:{size:9}}},
+        y:{grid:{color:'rgba(0,0,0,.04)'},ticks:{color:'#8e8e93',font:{size:9}},min:0,max:0.5,
+          title:{display:true,text:'平均时长(h)',color:'#8e8e93',font:{size:9}}}
       }
     }
   })
 
-  // list
+  // list — grouped by date
   const listEl=document.getElementById('sleep-list')
   if(!all.length){listEl.innerHTML='<div class="empty">还没有记录，点击右上角开始</div>';return}
-  listEl.innerHTML=all.map(l=>{
-    const col=l.duration>=7?'var(--good)':l.duration>=6?'var(--warn)':'var(--bad)'
-    const fillW=Math.min(100,(l.duration/10)*100)
-    const badges=[]
-    if(l.feel)badges.push(feelLabels[l.feel])
-    if(l.sp==='有')badges.push('😰 睡眠瘫痪')
-    if(l.head>0)badges.push(`头痛 ${l.head}/10`)
-    if(l.neck>0)badges.push(`肩颈 ${l.neck}/10`)
-    if(l.period&&l.period!=='非经期')badges.push(l.period)
-    return`<div class="log-item">
-      <span class="log-date">${fmtDate(l.date)}</span>
-      <div class="log-main">
-        <div class="log-duration" style="color:${col}">${fmtH(l.duration)}</div>
-        <div class="log-sub">${l.sleep} → ${l.wake}</div>
-        ${badges.length?`<div class="log-sub">${badges.join(' · ')}</div>`:''}
-        ${l.note?`<div class="log-sub">${l.note}</div>`:''}
-        <div class="dur-bar"><div class="dur-fill" style="width:${fillW}%;background:${col}"></div></div>
+
+  // group by date, preserve sort order
+  const dateOrder=[]
+  const grouped={}
+  all.forEach(l=>{
+    if(!grouped[l.date]){grouped[l.date]=[];dateOrder.push(l.date)}
+    grouped[l.date].push(l)
+  })
+
+  listEl.innerHTML=dateOrder.map(date=>{
+    const segs=grouped[date]
+    const totalDur=segs.reduce((s,l)=>s+l.duration,0)
+    const col=totalDur>=7?'var(--good)':totalDur>=6?'var(--warn)':'var(--bad)'
+    const fillW=Math.min(100,(totalDur/10)*100)
+    const segsHtml=segs.map(l=>{
+      const badges=[]
+      if(l.feel)badges.push(feelLabels[l.feel])
+      if(l.sp==='有')badges.push('😰 睡眠瘫痪')
+      if(l.head>0)badges.push(`头痛 ${l.head}/10`)
+      if(l.neck>0)badges.push(`肩颈 ${l.neck}/10`)
+      if(l.period&&l.period!=='非经期')badges.push(l.period)
+      return`<div style="display:flex;align-items:flex-start;padding:5px 0 5px 12px;border-left:2px solid var(--border);margin:4px 0;gap:6px">
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:500">${l.sleep} → ${l.wake} <span style="color:var(--muted);font-weight:400;font-size:12px">${fmtH(l.duration)}</span></div>
+          ${badges.length?`<div class="log-sub">${badges.join(' · ')}</div>`:''}
+          ${l.note?`<div class="log-sub">${l.note}</div>`:''}
+        </div>
+        <button class="edit-btn" data-sleep-edit="${l.id}">编辑</button>
+        <button class="del-btn" data-sleep-del="${l.id}">✕</button>
+      </div>`
+    }).join('')
+    return`<div class="log-item" style="flex-direction:column;align-items:stretch;gap:4px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="log-date" style="min-width:auto">${fmtDate(date)}</span>
+        <span class="log-duration" style="color:${col};font-size:15px">${fmtH(totalDur)}</span>
+        <span style="font-size:11px;color:var(--muted)">${segs.length>1?segs.length+'段':''}</span>
       </div>
-      <button class="edit-btn" data-sleep-edit="${l.id}">编辑</button>
-      <button class="del-btn" data-sleep-del="${l.id}">✕</button>
+      ${segsHtml}
+      <div class="dur-bar" style="margin-top:2px"><div class="dur-fill" style="width:${fillW}%;background:${col}"></div></div>
     </div>`
   }).join('')
 
+  // bind events — use string comparison for id (avoid float/int mismatch)
   listEl.querySelectorAll('[data-sleep-del]').forEach(btn=>{
     btn.addEventListener('click',()=>{
-      if(!confirm('删除这条记录？'))return
-      DB.set('sleep',DB.get('sleep').filter(l=>l.id!==+btn.dataset.sleepDel))
+      if(!confirm('删除这段记录？'))return
+      const sid=btn.dataset.sleepDel
+      DB.set('sleep',DB.get('sleep').filter(l=>String(l.id)!==sid))
       renderSleep()
     })
   })
   listEl.querySelectorAll('[data-sleep-edit]').forEach(btn=>{
     btn.addEventListener('click',()=>{
-      const l=DB.get('sleep').find(x=>x.id===+btn.dataset.sleepEdit);if(!l)return
+      const sid=btn.dataset.sleepEdit
+      const l=DB.get('sleep').find(x=>String(x.id)===sid);if(!l)return
       editingSleepId=l.id
       document.getElementById('sleep-modal-title').textContent='编辑睡眠'
       document.getElementById('sl-date').value=l.date
@@ -874,7 +908,7 @@ function renderBody(){
     return`<div class="body-item">
       <div class="body-header">
         <span style="font-size:11px;color:var(--muted)">${fmtDate(date)}</span>
-        ${feelTxt?`<span style="font-size:11px;color:var(--accent);margin-left:4px">${feelTxt}</span>`:''}
+        ${feelTxt?`<span style="font-size:11px;color:var(--accent);margin-left:4px">睡眠质量：${feelTxt}</span>`:''}
         <button class="edit-btn" style="margin-left:auto" data-body-date="${date}">+ 缓解记录</button>
       </div>
       <div class="body-tags">${symptoms.map(s=>`<span class="btag ${s.type}">${s.label}</span>`).join('')}</div>
