@@ -1243,6 +1243,7 @@
         <span class="chip" data-val="生病/感冒">生病/感冒</span><span class="chip" data-val="晚餐过晚">晚餐过晚</span>
         <span class="chip" data-val="其他">其他</span>
       </div>
+      <input type="text" id="sl-pre-cond-other" placeholder="手动填写睡前状态..." style="display:none;">
 
       <div class="grid-2">
         <div class="rng-wrap">
@@ -1439,6 +1440,14 @@
     function getSingleVal(cid) { const s = document.querySelector(`#${cid} .chip.selected`); return s ? (s.dataset.val || s.textContent.trim()) : null }
     bindSingle('sp-chips'); bindSingle('period-chips'); bindMulti('relief-chips'); bindSingle('goal-type-chips'); bindMulti('pre-cond-chips')
     document.querySelectorAll('#avatar-chips .chip').forEach(c => c.addEventListener('click', () => { document.querySelectorAll('#avatar-chips .chip').forEach(x => x.classList.remove('selected')); c.classList.add('selected') }))
+    document.querySelector('#pre-cond-chips [data-val="其他"]').addEventListener('click', function () {
+      const otherInput = document.getElementById('sl-pre-cond-other');
+      const isSelected = this.classList.contains('selected');
+      otherInput.style.display = isSelected ? 'block' : 'none';
+      if (isSelected) {
+        otherInput.focus();
+      }
+    });
 
     /* ═══════════════ BACKUP ═══════════════ */
     function checkBackupBanner() { const last = LS.get('__last_backup__', null); if (!last) { document.getElementById('backup-banner').style.display = 'flex'; return } const days = (Date.now() - new Date(last).getTime()) / 86400000; document.getElementById('backup-banner').style.display = days >= 14 ? 'flex' : 'none'; if (days >= 14) document.getElementById('backup-text').textContent = `距离上次备份已${Math.floor(days)}天，建议导出备份` }
@@ -1473,12 +1482,25 @@
       document.querySelectorAll('#sp-chips .chip').forEach((c, i) => c.classList.toggle('selected', i === 0));
       document.querySelectorAll('#period-chips .chip').forEach((c, i) => c.classList.toggle('selected', i === 0));
       document.querySelectorAll('#pre-cond-chips .chip').forEach(c => c.classList.remove('selected'));
+      const otherInput = document.getElementById('sl-pre-cond-other');
+      if (otherInput) {
+        otherInput.value = '';
+        otherInput.style.display = 'none';
+      }
     }
     document.getElementById('sleep-add-btn').addEventListener('click', () => { resetSleepModal(); openModal('sleep-modal') })
 
     document.getElementById('sl-save-btn').addEventListener('click', () => {
       const date = document.getElementById('sl-date').value, sleep = document.getElementById('sl-sleep').value, wake = document.getElementById('sl-wake').value;
       if (!date || !sleep || !wake) return alert('请填写日期和时间');
+
+      const preChipsSelected = getSelected('pre-cond-chips');
+      const otherInputVal = document.getElementById('sl-pre-cond-other').value.trim();
+      const preConditions = preChipsSelected.filter(x => x !== '其他');
+      if (preChipsSelected.includes('其他') && otherInputVal) {
+        preConditions.push(otherInputVal);
+      }
+
       const entry = {
         id: editingSleepId || Date.now(), date, sleep, wake,
         duration: +calcDur(sleep, wake).toFixed(2),
@@ -1488,7 +1510,7 @@
         neck: +document.getElementById('sl-neck').value,
         preHead: +document.getElementById('sl-pre-head').value,
         preNeck: +document.getElementById('sl-pre-neck').value,
-        preConditions: getSelected('pre-cond-chips'),
+        preConditions: preConditions,
         period: getSingleVal('period-chips'),
         note: document.getElementById('sl-note').value.trim(),
         _migrated: true
@@ -1546,7 +1568,30 @@
         document.getElementById('sl-note').value = l.note || '';
         document.querySelectorAll('#sp-chips .chip').forEach(c => c.classList.toggle('selected', c.dataset.val === l.sp));
         document.querySelectorAll('#period-chips .chip').forEach(c => c.classList.toggle('selected', c.dataset.val === l.period));
-        document.querySelectorAll('#pre-cond-chips .chip').forEach(c => c.classList.toggle('selected', (l.preConditions || []).includes(c.dataset.val)));
+        
+        const preConds = l.preConditions || [];
+        const predefined = ['高温', '低温', '长时间用眼', '久坐', '压力大', '焦虑', '疲劳', '精神兴奋', '咖啡因', '酒精', '剧烈运动', '脱水', '生病/感冒', '晚餐过晚'];
+        const otherVals = preConds.filter(x => !predefined.includes(x));
+        
+        document.querySelectorAll('#pre-cond-chips .chip').forEach(c => {
+          if (c.dataset.val === '其他') {
+            c.classList.toggle('selected', otherVals.length > 0);
+          } else {
+            c.classList.toggle('selected', preConds.includes(c.dataset.val));
+          }
+        });
+        
+        const otherInput = document.getElementById('sl-pre-cond-other');
+        if (otherInput) {
+          if (otherVals.length > 0) {
+            otherInput.value = otherVals.join(' ');
+            otherInput.style.display = 'block';
+          } else {
+            otherInput.value = '';
+            otherInput.style.display = 'none';
+          }
+        }
+        
         openModal('sleep-modal')
       }))
     }
