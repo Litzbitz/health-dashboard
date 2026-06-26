@@ -499,6 +499,34 @@ function buildDailySnapshots(logs,days=30){
 }
 
 /* ═══════════════ ANALYSIS ═══════════════ */
+/* ═══ EXPANDABLE METRIC RULES (global) ═══ */
+const RULES={
+  sleep:{
+    title:'睡眠时长判断规则',
+    rows:[['≥ 9h','偏长（可能过度睡眠）'],['7–9h','充足'],['6–7h','略不足'],['4–6h','不足'],['< 4h','严重不足'],['计算方式','取今日前后3天共7天的平均值']]
+  },
+  cont:{
+    title:'睡眠连续性判断规则',
+    rows:[['1段/天','连续睡眠（理想）'],['~2段/天','轻度碎片化'],['~3段/天','中度碎片化'],['≥4段/天','重度碎片化'],['说明','每次入睡到起床算一段']]
+  },
+  phase:{
+    title:'作息相位判断规则',
+    rows:[['22:00–00:00','正常入睡时间'],['00:00–02:00','轻度延迟'],['02:00–04:00','中度延迟'],['04:00以后','重度延迟（睡眠相位延迟综合征风险）'],['说明','取最近一次有记录的首次入睡时间']]
+  }
+}
+function showRuleExpand(key){
+  const area=document.getElementById('rating-expand-area')
+  if(!area)return
+  const r=RULES[key]
+  if(!r)return
+  if(area.dataset.open===key){area.innerHTML='';area.dataset.open='';return}
+  area.dataset.open=key
+  area.innerHTML='<div style="margin-top:10px;background:var(--surface2);border-radius:10px;padding:12px 14px;font-size:12px">'
+    +'<div style="font-weight:600;margin-bottom:8px;font-size:12px;color:var(--text)">'+r.title+'</div>'
+    +r.rows.map(function(row){return '<div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)"><span style="color:var(--accent);font-weight:500;min-width:90px;flex-shrink:0">'+row[0]+'</span><span style="color:var(--muted)">'+row[1]+'</span></div>'}).join('')
+    +'<div style="margin-top:6px;font-size:11px;color:var(--muted);text-align:right">再次点击收起</div></div>'
+}
+
 function renderAnalysis(){
   const all=getMigratedSleep(),snapshots=buildDailySnapshots(all,30),withData=snapshots.filter(s=>s.hasData),metricsEl=document.getElementById('sleep-metrics');
   if(!withData.length){
@@ -548,34 +576,6 @@ function renderAnalysis(){
       else{neckLabel='低关联';neckCls='metric-good'}
     }
 
-    // Rules for expandable info
-    const RULES={
-      sleep:{
-        title:'睡眠时长判断规则',
-        rules:[['≥ 9h','偏长（可能过度睡眠）'],['7–9h','充足'],['6–7h','略不足'],['4–6h','不足'],['< 4h','严重不足'],['计算方式','取今日前后3天共7天的平均值']]
-      },
-      cont:{
-        title:'睡眠连续性判断规则',
-        rules:[['1段/天','连续睡眠（理想）'],['~2段/天','轻度碎片化'],['~3段/天','中度碎片化'],['≥4段/天','重度碎片化'],['说明','每次入睡到起床算一段']]
-      },
-      phase:{
-        title:'作息相位判断规则',
-        rules:[['22:00–00:00','正常入睡时间'],['00:00–02:00','轻度延迟'],['02:00–04:00','中度延迟'],['04:00以后','重度延迟（睡眠相位延迟综合征风险）'],['说明','取最近一次有记录的首次入睡时间']]
-      }
-    }
-    function showRuleExpand(key){
-      const area=document.getElementById('rating-expand-area')
-      const r=RULES[key]
-      if(!r)return
-      // toggle
-      if(area.dataset.open===key){area.innerHTML='';area.dataset.open='';return}
-      area.dataset.open=key
-      area.innerHTML=`<div style="margin-top:10px;background:var(--surface2);border-radius:10px;padding:12px 14px;font-size:12px">
-        <div style="font-weight:600;margin-bottom:8px;font-size:12px;color:var(--text)">${r.title}</div>
-        ${r.rules.map(([k,v])=>`<div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)"><span style="color:var(--accent);font-weight:500;min-width:90px;flex-shrink:0">${k}</span><span style="color:var(--muted)">${v}</span></div>`).join('')}
-        <div style="margin-top:6px;font-size:11px;color:var(--muted);text-align:right">再次点击收起</div>
-      </div>`
-    }
     metricsEl.innerHTML=`
       <div class="metric-box" style="cursor:pointer" onclick="showRuleExpand('sleep')"><div class="metric-label">7日均睡 <span style="font-size:9px;color:var(--muted)">今±3天 ⓘ</span></div><div class="metric-val ${avgRating.cls}">${avgSleep.toFixed(1)}h</div><div class="metric-sub">${avgRating.label}</div></div>
       <div class="metric-box" style="cursor:pointer" onclick="showRuleExpand('cont')"><div class="metric-label">连续性 <span style="font-size:9px;color:var(--muted)">ⓘ</span></div><div class="metric-val ${contClass}">${avgSegs.toFixed(1)}段/天</div><div class="metric-sub">${contLabel}</div></div>
@@ -928,16 +928,14 @@ function renderSOP(){
   })
   el.innerHTML=html
   // Category toggle
-  el.querySelectorAll('[data-cat-toggle]').forEach(h=>{
-    h.addEventListener('click',()=>{
+  el.querySelectorAll('[data-cat-toggle]').forEach(function(h){
+    h.addEventListener('click',function(){
       const body=document.getElementById(h.dataset.catToggle)
-      const open=body.style.display==='block'
-      body.style.display=open?'none':'block'
-      h.querySelector('span:last-child').textContent=open?catMap[h.closest('.sop-cat-group').querySelector('.sop-cat-header span').textContent.split(' ')[1]?.replace('📁','').trim()||'?? 个 ▾':'?? 个 ▲'
-      // simpler: just rotate arrow
+      const isOpen=body.style.display==='block'
+      body.style.display=isOpen?'none':'block'
       const arrow=h.querySelector('span:last-child')
-      const cnt=arrow.textContent.replace(/[▾▲]/,'').trim()
-      arrow.textContent=cnt+' '+(open?'▾':'▲')
+      const cnt=arrow.textContent.replace(/[▾▲]/g,'').trim()
+      arrow.textContent=cnt+' '+(isOpen?'▾':'▲')
     })
   })
   // SOP item toggle
