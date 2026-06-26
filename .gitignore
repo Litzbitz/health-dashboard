@@ -1,0 +1,6 @@
+# Ignore everything
+*
+
+# Whitelist axis-v2.html and .gitignore
+!axis-v2.html
+!.gitignore
