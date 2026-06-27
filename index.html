@@ -1081,6 +1081,35 @@
         flex-basis: 40px
       }
     }
+
+    .sop-group {
+      border-bottom: 1px solid var(--border);
+    }
+    .sop-group:last-child {
+      border-bottom: none;
+    }
+    .sop-group-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text);
+      user-select: none;
+      transition: background-color 0.15s;
+    }
+    .sop-group-header:hover {
+      background: var(--surface2);
+    }
+    .sop-group-content {
+      display: none;
+      padding: 4px 8px 12px;
+    }
+    .sop-group-content.open {
+      display: block;
+    }
   </style>
 </head>
 
@@ -1945,7 +1974,95 @@
     document.getElementById('sop-add-btn').addEventListener('click', () => { editingSopId = null; document.getElementById('sop-modal-title').textContent = '添加 SOP';['sop-name', 'sop-cat', 'sop-steps-input', 'sop-note'].forEach(id => document.getElementById(id).value = ''); openModal('sop-modal') })
     document.getElementById('sop-save-btn').addEventListener('click', () => { const name = document.getElementById('sop-name').value.trim(), steps = document.getElementById('sop-steps-input').value.trim(); if (!name || !steps) return alert('请填写名称和步骤'); const sops = DB.get('sop'), entry = { name, cat: document.getElementById('sop-cat').value.trim(), steps: steps.split('\n').filter(s => s.trim()), note: document.getElementById('sop-note').value.trim() }; if (editingSopId) { const idx = sops.findIndex(s => String(s.id) === String(editingSopId)); if (idx >= 0) sops[idx] = { ...sops[idx], ...entry } } else sops.push({ id: Date.now(), created: today(), ...entry }); DB.set('sop', sops); closeModal('sop-modal'); renderSOP() })
     document.getElementById('sop-export-btn').addEventListener('click', () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(DB.get('sop'), null, 2)], { type: 'application/json' })); a.download = 'sop-export.json'; a.click() })
-    function renderSOP() { const sops = DB.get('sop'), el = document.getElementById('sop-list'); if (!sops.length) { el.innerHTML = '<div class="empty">还没有 SOP</div>'; return } el.innerHTML = sops.map(s => `<div class="sop-item"><div style="display:flex;align-items:flex-start"><div style="flex:1;cursor:pointer" data-sop-toggle="${s.id}"><div style="font-weight:500">${s.name}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">${s.cat || '未分类'} · ${s.steps.length}步 ▾</div></div><button class="edit-btn" data-sop-edit="${s.id}">编辑</button><button class="del-btn" data-sop-del="${s.id}">✕</button></div><div class="sop-steps-body" id="sop-body-${s.id}"><ol>${s.steps.map(st => `<li>${st}</li>`).join('')}</ol>${s.note ? `<div style="margin-top:7px;font-size:12px;color:var(--muted)"><strong style="color:var(--text);font-weight:500">备注：</strong>${s.note}</div>` : ''}</div></div>`).join(''); el.querySelectorAll('[data-sop-toggle]').forEach(e => e.addEventListener('click', () => document.getElementById('sop-body-' + e.dataset.sopToggle)?.classList.toggle('open'))); el.querySelectorAll('[data-sop-del]').forEach(btn => btn.addEventListener('click', () => { if (!confirm('删除？')) return; DB.set('sop', DB.get('sop').filter(s => String(s.id) !== btn.dataset.sopDel)); renderSOP() })); el.querySelectorAll('[data-sop-edit]').forEach(btn => btn.addEventListener('click', () => { const s = DB.get('sop').find(x => String(x.id) === btn.dataset.sopEdit); if (!s) return; editingSopId = s.id; document.getElementById('sop-modal-title').textContent = '编辑 SOP'; document.getElementById('sop-name').value = s.name; document.getElementById('sop-cat').value = s.cat || ''; document.getElementById('sop-steps-input').value = s.steps.join('\n'); document.getElementById('sop-note').value = s.note || ''; openModal('sop-modal') })) }
+    function renderSOP() {
+      const sops = DB.get('sop'), el = document.getElementById('sop-list');
+      if (!sops.length) { el.innerHTML = '<div class="empty">还没有 SOP</div>'; return }
+      
+      // Group sops by category
+      const groups = {};
+      sops.forEach(s => {
+        const cat = (s.cat && s.cat.trim()) ? s.cat.trim() : '未分类';
+        if (!groups[cat]) groups[cat] = [];
+        groups[cat].push(s);
+      });
+      
+      // Sort categories: put '未分类' at the end, others alphabetically sorted
+      const groupNames = Object.keys(groups).sort((a, b) => {
+        if (a === '未分类') return 1;
+        if (b === '未分类') return -1;
+        return a.localeCompare(b);
+      });
+      
+      el.innerHTML = groupNames.map((cat, groupIdx) => {
+        const catSops = groups[cat];
+        const sopsHtml = catSops.map(s => `
+          <div class="sop-item">
+            <div style="display:flex;align-items:flex-start">
+              <div style="flex:1;cursor:pointer" data-sop-toggle="${s.id}">
+                <div style="font-weight:500">${s.name}</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:2px">${s.steps.length}步 ▾</div>
+              </div>
+              <button class="edit-btn" data-sop-edit="${s.id}">编辑</button>
+              <button class="del-btn" data-sop-del="${s.id}">✕</button>
+            </div>
+            <div class="sop-steps-body" id="sop-body-${s.id}">
+              <ol>${s.steps.map(st => `<li>${st}</li>`).join('')}</ol>
+              ${s.note ? `<div style="margin-top:7px;font-size:12px;color:var(--muted)"><strong style="color:var(--text);font-weight:500">备注：</strong>${s.note}</div>` : ''}
+            </div>
+          </div>
+        `).join('');
+        
+        return `
+          <div class="sop-group">
+            <div class="sop-group-header" data-sop-group-toggle="${groupIdx}">
+              <span>${cat}</span>
+              <span class="sop-group-count" style="font-size:11px;color:var(--muted);font-weight:normal;">${catSops.length}个 SOP ▾</span>
+            </div>
+            <div class="sop-group-content" id="sop-group-content-${groupIdx}">
+              ${sopsHtml}
+            </div>
+          </div>
+        `;
+      }).join('');
+      
+      // Wire up toggle for groups
+      el.querySelectorAll('[data-sop-group-toggle]').forEach(e => {
+        e.addEventListener('click', () => {
+          const idx = e.dataset.sopGroupToggle;
+          const content = document.getElementById('sop-group-content-' + idx);
+          if (content) {
+            content.classList.toggle('open');
+            const countSpan = e.querySelector('.sop-group-count');
+            const isOpen = content.classList.contains('open');
+            const countText = countSpan.textContent.split('个')[0];
+            countSpan.textContent = `${countText}个 SOP ${isOpen ? '▴' : '▾'}`;
+          }
+        });
+      });
+
+      // Wire up toggle for individual sops
+      el.querySelectorAll('[data-sop-toggle]').forEach(e => e.addEventListener('click', () => document.getElementById('sop-body-' + e.dataset.sopToggle)?.classList.toggle('open')));
+      
+      // Wire up delete
+      el.querySelectorAll('[data-sop-del]').forEach(btn => btn.addEventListener('click', () => {
+        if (!confirm('删除？')) return;
+        DB.set('sop', DB.get('sop').filter(s => String(s.id) !== btn.dataset.sopDel));
+        renderSOP();
+      }));
+      
+      // Wire up edit
+      el.querySelectorAll('[data-sop-edit]').forEach(btn => btn.addEventListener('click', () => {
+        const s = DB.get('sop').find(x => String(x.id) === btn.dataset.sopEdit);
+        if (!s) return;
+        editingSopId = s.id;
+        document.getElementById('sop-modal-title').textContent = '编辑 SOP';
+        document.getElementById('sop-name').value = s.name;
+        document.getElementById('sop-cat').value = s.cat || '';
+        document.getElementById('sop-steps-input').value = s.steps.join('\n');
+        document.getElementById('sop-note').value = s.note || '';
+        openModal('sop-modal');
+      }));
+    }
 
     /* ═══════════════ GOALS ═══════════════ */
     let editingGoalId = null
