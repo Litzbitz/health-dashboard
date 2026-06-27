@@ -1186,6 +1186,11 @@
       <div class="page" id="page-body">
         <div class="section-header"><span class="section-title">身体状况</span></div>
         <div class="card">
+          <div class="filter-bar" id="body-date-filter-bar" style="margin-bottom: 8px;">
+            <button class="filter-btn active" data-filter="7">最近7天</button>
+            <button class="filter-btn" data-filter="30">最近一个月</button>
+            <button class="filter-btn" data-filter="90">最近三个月</button>
+          </div>
           <div class="filter-bar" id="body-filter-bar">
             <button class="filter-btn active" data-filter="all">全部</button><button class="filter-btn"
               data-filter="头痛">头痛</button><button class="filter-btn" data-filter="肩颈">肩颈</button><button
@@ -1899,7 +1904,8 @@
     }
 
     /* ═══════════════ BODY PAGE ═══════════════ */
-    let bodyFilter = 'all', reliefTargetDate = null
+    let bodyFilter = 'all', reliefTargetDate = null, bodyDateFilterDays = 7
+    document.getElementById('body-date-filter-bar').addEventListener('click', e => { const btn = e.target.closest('.filter-btn'); if (!btn) return; document.querySelectorAll('#body-date-filter-bar .filter-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); bodyDateFilterDays = +btn.dataset.filter; renderBody() })
     document.getElementById('body-filter-bar').addEventListener('click', e => { const btn = e.target.closest('.filter-btn'); if (!btn) return; document.querySelectorAll('#body-filter-bar .filter-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); bodyFilter = btn.dataset.filter; renderBody() })
     document.getElementById('relief-save-btn').addEventListener('click', () => { if (!reliefTargetDate) return; const logs = DB.get('body'), entry = { date: reliefTargetDate, reliefs: getSelected('relief-chips'), degree: +document.getElementById('relief-degree').value, note: document.getElementById('relief-note').value.trim() }, idx = logs.findIndex(l => l.date === reliefTargetDate); if (idx >= 0) logs[idx] = entry; else logs.push(entry); logs.sort((a, b) => b.date.localeCompare(a.date)); DB.set('body', logs); closeModal('relief-modal'); renderBody() })
     function openReliefModal(date, segs) { reliefTargetDate = date; document.getElementById('relief-modal-title').textContent = `缓解记录 · ${fmtDate(date)}`; const syms = []; segs.forEach(l => { if (l.head > 1) syms.push(`醒后头痛 ${l.head}/5`); if (l.neck > 1) syms.push(`醒后肩颈 ${l.neck}/5`); if (l.preHead > 1) syms.push(`睡前头痛 ${l.preHead}/5`); if (l.preNeck > 1) syms.push(`睡前肩颈 ${l.preNeck}/5`); if (l.sp === '有') syms.push('睡眠瘫痪'); if (l.period && l.period !== '非经期') syms.push(l.period) }); document.getElementById('relief-symptom-summary').textContent = syms.length ? '当日症状：' + syms.join('、') : '当日无明显症状'; document.querySelectorAll('#relief-chips .chip').forEach(c => c.classList.remove('selected')); document.getElementById('relief-degree').value = 50; document.getElementById('relief-degree-val').textContent = '50%'; document.getElementById('relief-note').value = ''; const existing = DB.get('body').find(b => b.date === date); if (existing) { document.querySelectorAll('#relief-chips .chip').forEach(c => { if (existing.reliefs?.includes(c.textContent.trim())) c.classList.add('selected') }); document.getElementById('relief-degree').value = existing.degree ?? 50; document.getElementById('relief-degree-val').textContent = (existing.degree ?? 50) + '%'; document.getElementById('relief-note').value = existing.note || '' } openModal('relief-modal') }
@@ -1908,6 +1914,8 @@
       const sleepLogs = getMigratedSleep(), bodyLogs = DB.get('body'), byDate = {};
       sleepLogs.forEach(l => { const wd = getWakeDate(l); if (!byDate[wd]) byDate[wd] = []; byDate[wd].push(l) });
       let dates = Object.keys(byDate).sort((a, b) => b.localeCompare(a));
+      const allowedDates = new Set(dateRange(bodyDateFilterDays));
+      dates = dates.filter(d => allowedDates.has(d));
       if (bodyFilter === '头痛') dates = dates.filter(d => byDate[d].some(l => l.head > 1 || l.preHead > 1));
       else if (bodyFilter === '肩颈') dates = dates.filter(d => byDate[d].some(l => l.neck > 1 || l.preNeck > 1));
       else if (bodyFilter === '经期') dates = dates.filter(d => byDate[d].some(l => l.period && l.period !== '非经期'));
