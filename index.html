@@ -1130,6 +1130,11 @@
         </div>
         <div class="card">
           <div class="card-title">记录明细</div>
+          <div class="filter-bar" id="sleep-list-filter-bar">
+            <button class="filter-btn active" data-filter="7">最近7天</button>
+            <button class="filter-btn" data-filter="30">最近一个月</button>
+            <button class="filter-btn" data-filter="90">最近三个月</button>
+          </div>
           <div id="sleep-list">
             <div class="empty">还没有记录</div>
           </div>
@@ -1460,7 +1465,7 @@
     document.getElementById('user-badge').addEventListener('click', switchUser); document.getElementById('manage-link').addEventListener('click', () => openModal('manage-modal')); document.getElementById('add-user-btn').addEventListener('click', () => { closeModal('manage-modal'); openModal('add-user-modal') }); document.getElementById('new-user-save-btn').addEventListener('click', addNewUser); document.getElementById('io-btn').addEventListener('click', () => openModal('io-modal'))
 
     /* ═══════════════ SLEEP MODAL ═══════════════ */
-    let sleepFilterDays = 7, editingSleepId = null, phaseFilterDays = 30
+    let sleepFilterDays = 7, editingSleepId = null, phaseFilterDays = 30, sleepListFilterDays = 7
     document.getElementById('sl-feel').addEventListener('input', function () { document.getElementById('sl-feel-val').textContent = feelLabels[this.value] })
     document.getElementById('sl-head').addEventListener('input', function () { document.getElementById('sl-head-val').textContent = painLabels[this.value] })
     document.getElementById('sl-neck').addEventListener('input', function () { document.getElementById('sl-neck-val').textContent = painLabels[this.value] })
@@ -1524,6 +1529,7 @@
     document.getElementById('sleep-filter-bar').addEventListener('click', e => { const btn = e.target.closest('.filter-btn'); if (!btn) return; document.querySelectorAll('#sleep-filter-bar .filter-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); sleepFilterDays = +btn.dataset.filter; renderSleep() })
 
     document.getElementById('phase-filter-bar').addEventListener('click', e => { const btn = e.target.closest('.filter-btn'); if (!btn) return; document.querySelectorAll('#phase-filter-bar .filter-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); phaseFilterDays = +btn.dataset.filter; renderPhaseTrend(getMigratedSleep(), phaseFilterDays) })
+    document.getElementById('sleep-list-filter-bar').addEventListener('click', e => { const btn = e.target.closest('.filter-btn'); if (!btn) return; document.querySelectorAll('#sleep-list-filter-bar .filter-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); sleepListFilterDays = +btn.dataset.filter; renderSleep() })
 
     /* ═══════════════ GANTT ═══════════════ */
     function splitSleepSegmentByDate(entry) { const start = timeToMin(entry.sleep), end = timeToMin(entry.wake); if (end > start) return [{ date: entry.date, start, end, raw: entry }]; if (end === start) return []; return [{ date: entry.date, start, end: 1440, raw: entry }, { date: addDate(entry.date, 1), start: 0, end, raw: entry }] }
@@ -1533,9 +1539,11 @@
     /* ═══════════════ SLEEP LIST ═══════════════ */
     function renderSleepList(all) {
       const listEl = document.getElementById('sleep-list');
-      if (!all.length) { listEl.innerHTML = '<div class="empty">还没有记录</div>'; return }
+      const allowedDates = new Set(dateRange(sleepListFilterDays));
+      const filtered = all.filter(l => allowedDates.has(getWakeDate(l)));
+      if (!filtered.length) { listEl.innerHTML = '<div class="empty">还没有记录</div>'; return }
       const byDate = {}, dateOrder = [];
-      all.forEach(l => { const wd = getWakeDate(l); if (!byDate[wd]) { byDate[wd] = []; dateOrder.push(wd) } byDate[wd].push(l) });
+      filtered.forEach(l => { const wd = getWakeDate(l); if (!byDate[wd]) { byDate[wd] = []; dateOrder.push(wd) } byDate[wd].push(l) });
       dateOrder.sort((a, b) => b.localeCompare(a));
       listEl.innerHTML = dateOrder.map(date => {
         const segs = byDate[date].sort((a, b) => b.sleep.localeCompare(a.sleep)), total = segs.reduce((s, l) => s + l.duration, 0), rating = sleepRating(total), col = rating.cls === 'metric-good' ? 'var(--good)' : rating.cls === 'metric-warn' ? 'var(--warn)' : 'var(--bad)';
