@@ -1144,6 +1144,82 @@
       transform: rotate(180deg);
       color: var(--accent);
     }
+
+    /* ── Diary / Reflection ── */
+    .diary-entry {
+      border-bottom: 1px solid var(--border);
+      padding: 12px 16px;
+      cursor: pointer;
+      transition: background .12s;
+    }
+
+    .diary-entry:last-child {
+      border-bottom: none;
+    }
+
+    .diary-entry:hover {
+      background: var(--surface2);
+    }
+
+    .diary-entry-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .diary-mood {
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .diary-date {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .diary-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-left: auto;
+    }
+
+    .diary-tag {
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 10px;
+      background: rgba(0, 122, 255, .08);
+      color: var(--accent);
+    }
+
+    .diary-preview {
+      font-size: 13px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .diary-full {
+      display: none;
+      margin-top: 10px;
+      font-size: 13px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      color: var(--text);
+    }
+
+    .diary-full.open {
+      display: block;
+    }
+
+    .diary-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
   </style>
 </head>
 
@@ -1169,6 +1245,7 @@
       <button data-page="body">身体</button>
       <button data-page="sop">SOP</button>
       <button data-page="goals">目标</button>
+      <button data-page="diary">Reflection</button>
       <button id="io-btn"
         style="border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:12px;padding:4px 9px;background:none;cursor:pointer;font-family:inherit">备份</button>
       <button class="user-badge" id="user-badge"><span id="nav-avatar">👤</span><span id="nav-name">—</span></button>
@@ -1291,7 +1368,49 @@
           </div>
         </div>
       </div>
+      <div class="page" id="page-diary">
+        <div class="section-header">
+          <span class="section-title">Reflection</span>
+          <button class="btn btn-sm" id="diary-add-btn">+ 写日记</button>
+        </div>
+        <div class="card" style="padding:0">
+          <div class="filter-bar" style="padding:10px 14px 0" id="diary-filter-bar">
+            <button class="filter-btn active" data-filter="30">近30天</button>
+            <button class="filter-btn" data-filter="90">近3个月</button>
+            <button class="filter-btn" data-filter="365">近一年</button>
+            <button class="filter-btn" data-filter="0">全部</button>
+          </div>
+          <div id="diary-list" style="padding:8px 0">
+            <div class="empty">还没有日记</div>
+          </div>
+        </div>
+      </div>
     </main>
+  </div>
+  <!-- Diary Modal -->
+  <div class="modal-overlay" id="diary-modal">
+    <div class="modal">
+      <div class="modal-title" id="diary-modal-title">写日记</div>
+      <label>日期</label><input type="date" id="diary-date">
+      <label>心情</label>
+      <div class="chips" id="diary-mood-chips" style="font-size:20px">
+        <span class="chip selected" data-val="😊">😊</span>
+        <span class="chip" data-val="😌">😌</span>
+        <span class="chip" data-val="😐">😐</span>
+        <span class="chip" data-val="😔">😔</span>
+        <span class="chip" data-val="😰">😰</span>
+        <span class="chip" data-val="😤">😤</span>
+        <span class="chip" data-val="😴">😴</span>
+        <span class="chip" data-val="🤒">🤒</span>
+      </div>
+      <label>标签（回车添加）</label>
+      <div class="chips" id="diary-tag-chips"></div>
+      <input type="text" id="diary-tag-input" placeholder="工作、身体、情绪……">
+      <label>内容</label>
+      <textarea id="diary-content" placeholder="今天……" style="min-height:160px;resize:vertical"></textarea>
+      <div class="flex"><button class="btn" id="diary-save-btn">保存</button><button class="btn btn-ghost"
+          data-close="diary-modal">取消</button></div>
+    </div>
   </div>
   <!-- Sleep Modal -->
   <div class="modal-overlay" id="sleep-modal">
@@ -1554,18 +1673,19 @@
 
     /* ═══════════════ COMPAT SHIM: async DB used by all render fns ═══════════════ */
     // Cache layer so sync render functions can work after initial load
-    const _cache = { sleep: [], body: [], sop: [], goals: [] };
+    const _cache = { sleep: [], body: [], sop: [], goals: [], diary: [] };
 
     async function loadUserData() {
       showLoading('加载数据…');
       try {
-        const [sleep, body, sop, goals] = await Promise.all([
-          dbGet('sleep'), dbGet('body'), dbGet('sop'), dbGet('goals')
+        const [sleep, body, sop, goals, diary] = await Promise.all([
+          dbGet('sleep'), dbGet('body'), dbGet('sop'), dbGet('goals'), dbGet('diary')
         ]);
         _cache.sleep = sleep;
         _cache.body = body;
         _cache.sop = sop;
         _cache.goals = goals;
+        _cache.diary = diary;
       } finally {
         hideLoading();
       }
@@ -1677,7 +1797,7 @@
     }
 
     /* ═══════════════ PAGE ROUTING ═══════════════ */
-    const pageRenderers = { sleep: renderSleep, analysis: renderAnalysis, body: renderBody, sop: renderSOP, goals: renderGoals }
+    const pageRenderers = { sleep: renderSleep, analysis: renderAnalysis, body: renderBody, sop: renderSOP, goals: renderGoals, diary: renderDiary }
     document.querySelectorAll('nav button[data-page]').forEach(btn => btn.addEventListener('click', () => { document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); document.querySelectorAll('nav button[data-page]').forEach(b => b.classList.remove('active')); document.getElementById('page-' + btn.dataset.page).classList.add('active'); btn.classList.add('active'); pageRenderers[btn.dataset.page]?.() }))
     document.getElementById('user-badge').addEventListener('click', switchUser); document.getElementById('manage-link').addEventListener('click', () => openModal('manage-modal')); document.getElementById('add-user-btn').addEventListener('click', () => { closeModal('manage-modal'); openModal('add-user-modal') }); document.getElementById('new-user-save-btn').addEventListener('click', addNewUser); document.getElementById('io-btn').addEventListener('click', () => openModal('io-modal'));
     document.getElementById('export-btn').addEventListener('click', () => exportData());
@@ -2318,10 +2438,145 @@
     document.getElementById('goal-save-btn').addEventListener('click', () => { const text = document.getElementById('goal-text').value.trim(); if (!text) return alert('请填写内容'); const tags = getSelected('goal-tag-chips'); tags.forEach(saveTag); const goals = DB.get('goals'), entry = { text, tags, type: getSingleVal('goal-type-chips') || 'long', dueDate: document.getElementById('goal-date').value || null }; if (editingGoalId) { const idx = goals.findIndex(g => String(g.id) === String(editingGoalId)); if (idx >= 0) goals[idx] = { ...goals[idx], ...entry } } else goals.push({ id: Date.now(), done: false, created: today(), ...entry }); DB.set('goals', goals); closeModal('goal-modal'); dbSync('goals').then(() => renderGoals()) })
     function renderGoals() { const goals = DB.get('goals'), renderList = (list, elId) => { const el = document.getElementById(elId); el.innerHTML = ''; if (!list.length) { el.innerHTML = '<div class="empty">暂无</div>'; return } list.forEach(g => { const div = document.createElement('div'); div.className = 'goal-item'; div.innerHTML = `<div class="g-check${g.done ? ' done' : ''}"></div><div style="flex:1"><div class="g-text${g.done ? ' done' : ''}">${g.text}</div><div class="g-meta">${g.dueDate ? `<span>${fmtDate(g.dueDate)}</span>` : ''} ${g.tags?.map(t => `<span class="g-tag">${t}</span>`).join('') || ''}</div></div><button class="edit-btn">编辑</button><button class="del-btn">✕</button>`; div.querySelector('.g-check').addEventListener('click', () => { const gs = DB.get('goals'), gx = gs.find(x => String(x.id) === String(g.id)); if (gx) gx.done = !gx.done; DB.set('goals', gs); dbSync('goals').then(() => renderGoals()) }); div.querySelector('.edit-btn').addEventListener('click', () => { editingGoalId = g.id; document.getElementById('goal-modal-title').textContent = '编辑'; document.getElementById('goal-text').value = g.text; document.getElementById('goal-date').value = g.dueDate || ''; document.querySelectorAll('#goal-type-chips .chip').forEach(c => c.classList.toggle('selected', c.dataset.val === g.type)); renderGoalTagChips(g.tags || []); openModal('goal-modal') }); div.querySelector('.del-btn').addEventListener('click', async () => { const id = String(g.id); DB.set('goals', DB.get('goals').filter(x => String(x.id) !== id)); await dbDel('goals', id); renderGoals() }); el.appendChild(div) }) }; renderList(goals.filter(g => g.type === 'long'), 'goal-long'); renderList(goals.filter(g => g.type === 'todo'), 'goal-todo') }
 
-    /* ═══════════════ BACKUP — Firebase 主存储 + JSON 本地灾备 ═══════════════ */
+    /* ═══════════════ DIARY / REFLECTION ═══════════════ */
+    let editingDiaryId = null, diaryFilterDays = 30;
+    const DIARY_DEFAULT_TAGS = ['工作', '身体', '情绪', '生活', '想法'];
+
+    function getDiaryTags() { return [...new Set([...DIARY_DEFAULT_TAGS, ...LS.get('__diary_tags__', [])])] }
+    function saveDiaryTag(t) { const tags = LS.get('__diary_tags__', []); if (!tags.includes(t)) { tags.push(t); LS.set('__diary_tags__', tags) } }
+
+    function renderDiaryTagChips(sel = []) {
+      const c = document.getElementById('diary-tag-chips');
+      c.innerHTML = '';
+      getDiaryTags().forEach(t => {
+        const s = document.createElement('span');
+        s.className = 'chip' + (sel.includes(t) ? ' selected' : '');
+        s.textContent = t;
+        s.addEventListener('click', () => s.classList.toggle('selected'));
+        c.appendChild(s);
+      });
+    }
+
+    function resetDiaryModal() {
+      editingDiaryId = null;
+      document.getElementById('diary-modal-title').textContent = '写日记';
+      document.getElementById('diary-date').value = today();
+      document.getElementById('diary-content').value = '';
+      document.getElementById('diary-tag-input').value = '';
+      document.querySelectorAll('#diary-mood-chips .chip').forEach((c, i) => c.classList.toggle('selected', i === 0));
+      renderDiaryTagChips();
+    }
+
+    document.getElementById('diary-add-btn').addEventListener('click', () => { resetDiaryModal(); openModal('diary-modal') });
+
+    document.getElementById('diary-tag-input').addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const v = e.target.value.trim();
+      if (!v) return;
+      saveDiaryTag(v);
+      renderDiaryTagChips([...getSelected('diary-tag-chips'), v]);
+      e.target.value = '';
+    });
+
+    bindSingle('diary-mood-chips');
+
+    document.getElementById('diary-save-btn').addEventListener('click', async () => {
+      const date = document.getElementById('diary-date').value;
+      const content = document.getElementById('diary-content').value.trim();
+      if (!date || !content) return alert('请填写日期和内容');
+      const mood = getSingleVal('diary-mood-chips') || '😊';
+      const tags = getSelected('diary-tag-chips');
+      tags.forEach(saveDiaryTag);
+      const entry = { date, mood, tags, content, updatedAt: new Date().toISOString() };
+      const diaries = DB.get('diary');
+      if (editingDiaryId) {
+        const idx = diaries.findIndex(d => String(d.id) === String(editingDiaryId));
+        if (idx >= 0) diaries[idx] = { ...diaries[idx], ...entry };
+        entry.id = editingDiaryId;
+      } else {
+        entry.id = Date.now();
+        entry.createdAt = entry.updatedAt;
+        diaries.push(entry);
+      }
+      diaries.sort((a, b) => b.date.localeCompare(a.date));
+      DB.set('diary', diaries);
+      closeModal('diary-modal');
+      await dbSet('diary', diaries.find(d => String(d.id) === String(entry.id)));
+      renderDiary();
+    });
+
+    document.getElementById('diary-filter-bar').addEventListener('click', e => {
+      const btn = e.target.closest('.filter-btn');
+      if (!btn) return;
+      document.querySelectorAll('#diary-filter-bar .filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      diaryFilterDays = +btn.dataset.filter;
+      renderDiary();
+    });
+
+    function renderDiary() {
+      let diaries = [...DB.get('diary')].sort((a, b) => b.date.localeCompare(a.date));
+      if (diaryFilterDays > 0) {
+        const cutoff = addDate(today(), -diaryFilterDays);
+        diaries = diaries.filter(d => d.date >= cutoff);
+      }
+      const el = document.getElementById('diary-list');
+      if (!diaries.length) { el.innerHTML = '<div class="empty" style="padding:20px 0">这段时间还没有日记</div>'; return }
+
+      el.innerHTML = '';
+      diaries.forEach(d => {
+        const entry = document.createElement('div');
+        entry.className = 'diary-entry';
+        const tagsHtml = (d.tags || []).map(t => `<span class="diary-tag">${t}</span>`).join('');
+        const preview = (d.content || '').replace(/\n/g, ' ').slice(0, 60) + ((d.content || '').length > 60 ? '…' : '');
+        entry.innerHTML = `
+          <div class="diary-entry-header">
+            <span class="diary-mood">${d.mood || '😊'}</span>
+            <span class="diary-date">${fmtDate(d.date)}</span>
+            <div class="diary-tags">${tagsHtml}</div>
+          </div>
+          <div class="diary-preview">${preview}</div>
+          <div class="diary-full" id="diary-full-${d.id}">${(d.content || '').replace(/</g, '&lt;')}</div>
+          <div class="diary-actions" id="diary-actions-${d.id}" style="display:none">
+            <button class="edit-btn" data-diary-edit="${d.id}">编辑</button>
+            <button class="del-btn" data-diary-del="${d.id}">删除</button>
+          </div>`;
+
+        // 点击展开/收起
+        entry.addEventListener('click', ev => {
+          if (ev.target.closest('button')) return;
+          const full = document.getElementById('diary-full-' + d.id);
+          const actions = document.getElementById('diary-actions-' + d.id);
+          const isOpen = full.classList.toggle('open');
+          actions.style.display = isOpen ? 'flex' : 'none';
+          entry.querySelector('.diary-preview').style.display = isOpen ? 'none' : 'block';
+        });
+
+        entry.querySelector('[data-diary-edit]').addEventListener('click', () => {
+          editingDiaryId = d.id;
+          document.getElementById('diary-modal-title').textContent = '编辑日记';
+          document.getElementById('diary-date').value = d.date;
+          document.getElementById('diary-content').value = d.content || '';
+          document.getElementById('diary-tag-input').value = '';
+          document.querySelectorAll('#diary-mood-chips .chip').forEach(c => c.classList.toggle('selected', c.dataset.val === d.mood));
+          renderDiaryTagChips(d.tags || []);
+          openModal('diary-modal');
+        });
+
+        entry.querySelector('[data-diary-del]').addEventListener('click', async () => {
+          if (!confirm('删除这篇日记？')) return;
+          DB.set('diary', DB.get('diary').filter(x => String(x.id) !== String(d.id)));
+          await dbDel('diary', d.id);
+          renderDiary();
+        });
+
+        el.appendChild(entry);
+      });
+    }
 
     // 支持的子集合（扩展时在这里加）
-    const COLLECTIONS = ['sleep', 'body', 'sop', 'goals'];
+    const COLLECTIONS = ['sleep', 'body', 'sop', 'goals', 'diary'];
 
     // 新导出格式 v7：users 以 userId 为 key 的 map
     async function exportData() {
