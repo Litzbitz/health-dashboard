@@ -1436,13 +1436,15 @@
   <div class="modal-overlay" id="io-modal">
     <div class="modal">
       <div class="modal-title">数据备份 & 恢复</div>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:10px">从 Firestore 导出所有用户数据为 JSON 文件</p>
-      <button class="btn" id="export-btn" style="margin-bottom:16px">导出 health-backup.json</button>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:10px">从 Firestore 导出全部用户数据为本地 JSON 灾备文件</p>
+      <button class="btn" id="export-btn" style="margin-bottom:16px">⬇ 导出 health-backup.json</button>
       <hr style="border:none;border-top:1px solid var(--border);margin-bottom:14px">
-      <p style="font-size:13px;color:var(--muted);margin-bottom:8px">导入会覆盖当前所有数据</p><input type="file" id="import-file"
-        accept=".json">
-      <div class="flex" style="margin-top:8px"><button class="btn btn-warn" id="import-btn">导入并恢复</button><button
-          class="btn btn-ghost" data-close="io-modal">关闭</button></div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:4px">导入 JSON → 写入 Firestore（按 id 覆盖）</p>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:8px">支持新格式（v7）及旧版 localStorage 导出格式</p>
+      <input type="file" id="import-file" accept=".json">
+      <div id="import-progress" style="display:none;margin-top:8px;font-size:12px;color:var(--accent)"></div>
+      <div class="flex" style="margin-top:8px"><button class="btn btn-warn" id="import-btn">⬆ 导入并写入
+          Firestore</button><button class="btn btn-ghost" data-close="io-modal">关闭</button></div>
     </div>
   </div>
 
@@ -2255,60 +2257,139 @@
     document.getElementById('goal-save-btn').addEventListener('click', () => { const text = document.getElementById('goal-text').value.trim(); if (!text) return alert('请填写内容'); const tags = getSelected('goal-tag-chips'); tags.forEach(saveTag); const goals = DB.get('goals'), entry = { text, tags, type: getSingleVal('goal-type-chips') || 'long', dueDate: document.getElementById('goal-date').value || null }; if (editingGoalId) { const idx = goals.findIndex(g => String(g.id) === String(editingGoalId)); if (idx >= 0) goals[idx] = { ...goals[idx], ...entry } } else goals.push({ id: Date.now(), done: false, created: today(), ...entry }); DB.set('goals', goals); closeModal('goal-modal'); dbSync('goals').then(() => renderGoals()) })
     function renderGoals() { const goals = DB.get('goals'), renderList = (list, elId) => { const el = document.getElementById(elId); el.innerHTML = ''; if (!list.length) { el.innerHTML = '<div class="empty">暂无</div>'; return } list.forEach(g => { const div = document.createElement('div'); div.className = 'goal-item'; div.innerHTML = `<div class="g-check${g.done ? ' done' : ''}"></div><div style="flex:1"><div class="g-text${g.done ? ' done' : ''}">${g.text}</div><div class="g-meta">${g.dueDate ? `<span>${fmtDate(g.dueDate)}</span>` : ''} ${g.tags?.map(t => `<span class="g-tag">${t}</span>`).join('') || ''}</div></div><button class="edit-btn">编辑</button><button class="del-btn">✕</button>`; div.querySelector('.g-check').addEventListener('click', () => { const gs = DB.get('goals'), gx = gs.find(x => String(x.id) === String(g.id)); if (gx) gx.done = !gx.done; DB.set('goals', gs); dbSync('goals').then(() => renderGoals()) }); div.querySelector('.edit-btn').addEventListener('click', () => { editingGoalId = g.id; document.getElementById('goal-modal-title').textContent = '编辑'; document.getElementById('goal-text').value = g.text; document.getElementById('goal-date').value = g.dueDate || ''; document.querySelectorAll('#goal-type-chips .chip').forEach(c => c.classList.toggle('selected', c.dataset.val === g.type)); renderGoalTagChips(g.tags || []); openModal('goal-modal') }); div.querySelector('.del-btn').addEventListener('click', () => { DB.set('goals', DB.get('goals').filter(x => String(x.id) !== String(g.id))); dbSync('goals').then(() => renderGoals()) }); el.appendChild(div) }) }; renderList(goals.filter(g => g.type === 'long'), 'goal-long'); renderList(goals.filter(g => g.type === 'todo'), 'goal-todo') }
 
-    /* ═══════════════ BACKUP (Firestore export/import) ═══════════════ */
+    /* ═══════════════ BACKUP — Firebase 主存储 + JSON 本地灾备 ═══════════════ */
+
+    // 支持的子集合（扩展时在这里加）
+    const COLLECTIONS = ['sleep', 'body', 'sop', 'goals'];
+
+    // 新导出格式 v7：users 以 userId 为 key 的 map
     async function exportData() {
       showLoading('导出中…');
       try {
         const users = getUsers();
-        const data = { version: 6, exported: new Date().toISOString(), users, userData: {} };
+        const savedCU = CU;
+        const out = {
+          version: 7,
+          exportTime: new Date().toISOString(),
+          users: {}
+        };
         for (const u of users) {
-          // Temporarily read from Firestore directly for export
-          const savedId = CU?.id;
-          CU = u; // point to this user
-          const [sleep, body, sop, goals] = await Promise.all([
-            dbGet('sleep'), dbGet('body'), dbGet('sop'), dbGet('goals')
-          ]);
-          data.userData[u.id] = { sleep, body, sop, goals };
-          CU = users.find(x => x.id === savedId) || CU;
+          CU = u;
+          const colData = {};
+          for (const col of COLLECTIONS) {
+            colData[col] = await dbGet(col);
+          }
+          out.users[u.id] = { _profile: { id: u.id, name: u.name, avatar: u.avatar }, ...colData };
         }
+        CU = savedCU;
+        const ts = new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', '-');
         const a = document.createElement('a');
-        a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
-        a.download = 'health-backup.json'; a.click();
+        a.href = URL.createObjectURL(new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' }));
+        a.download = `axis-backup-${ts}.json`;
+        a.click();
         LS.set('__last_backup__', new Date().toISOString());
-        checkBackupBanner(); closeModal('io-modal');
+        checkBackupBanner();
+        closeModal('io-modal');
       } finally {
         hideLoading();
       }
     }
 
+    // 将一组 items 以原有 id 批量 upsert 到 Firestore（500条一批）
+    async function batchUpsert(collName, items) {
+      if (!items || !items.length) return;
+      // 确保每条数据有 id
+      const valid = items.filter(x => x && x.id != null);
+      // Firestore batch 最多 500 次操作
+      for (let i = 0; i < valid.length; i += 500) {
+        const chunk = valid.slice(i, i + 500);
+        const batch = writeBatch(db);
+        chunk.forEach(item => batch.set(userDoc(collName, item.id), item, { merge: true }));
+        await batch.commit();
+      }
+    }
+
+    // 兼容旧格式（v5/v6 用 users 数组 + userData 对象）和新格式（v7 用 users map）
+    function normalizeBackup(data) {
+      // v7 格式
+      if (data.version === 7 && data.users && !Array.isArray(data.users)) {
+        const profiles = [];
+        const userData = {};
+        for (const [uid, uData] of Object.entries(data.users)) {
+          const profile = uData._profile || { id: uid, name: uid, avatar: '🙋' };
+          profiles.push(profile);
+          userData[uid] = {};
+          for (const col of COLLECTIONS) {
+            userData[uid][col] = uData[col] || [];
+          }
+        }
+        return { profiles, userData };
+      }
+      // 旧格式 v5/v6：users 是数组，userData 是 { userId: { sleep, body, ... } }
+      if (Array.isArray(data.users)) {
+        const userData = {};
+        for (const u of data.users) {
+          userData[u.id] = {};
+          for (const col of COLLECTIONS) {
+            // 旧格式 body 可能叫 body，pain 叫 pain
+            userData[u.id][col] = (data.userData?.[u.id]?.[col]) || [];
+          }
+        }
+        return { profiles: data.users, userData };
+      }
+      return null;
+    }
+
     async function importData() {
       const file = document.getElementById('import-file').files[0];
       if (!file) return alert('请先选择文件');
+      const progressEl = document.getElementById('import-progress');
       const r = new FileReader();
       r.onload = async e => {
         try {
           const data = JSON.parse(e.target.result);
-          if (!data.users) return alert('格式不正确');
-          if (!confirm('导入将覆盖当前所有数据？')) return;
+          const normalized = normalizeBackup(data);
+          if (!normalized) return alert('格式不正确，无法识别此备份文件');
+
+          const { profiles, userData } = normalized;
+          const totalUsers = profiles.length;
+          if (!confirm(`将把 ${totalUsers} 个用户的数据写入 Firestore（按 id 覆盖已有记录）。继续？`)) return;
+
           showLoading('导入中…');
-          saveUsers(data.users);
+          progressEl.style.display = 'block';
           const savedCU = CU;
-          for (const [uid, ud] of Object.entries(data.userData || {})) {
-            const u = data.users.find(x => x.id === uid);
-            if (!u) continue;
-            CU = u;
-            for (const k of ['sleep', 'body', 'sop', 'goals']) {
-              if (ud[k]) await dbSetAll(k, ud[k]);
-            }
+
+          // 合并用户列表（不覆盖已有用户，补充新用户）
+          const existingUsers = getUsers();
+          const mergedUsers = [...existingUsers];
+          for (const p of profiles) {
+            if (!mergedUsers.find(u => u.id === p.id)) mergedUsers.push(p);
           }
+          saveUsers(mergedUsers);
+
+          let usersDone = 0;
+          for (const profile of profiles) {
+            CU = profile;
+            progressEl.textContent = `正在导入 ${profile.name || profile.id}… (${usersDone + 1}/${totalUsers})`;
+            const ud = userData[profile.id] || {};
+            for (const col of COLLECTIONS) {
+              const items = ud[col] || [];
+              if (items.length) await batchUpsert(col, items);
+            }
+            usersDone++;
+          }
+
           CU = savedCU;
           LS.set('__last_backup__', new Date().toISOString());
           hideLoading();
-          alert('恢复成功！页面将刷新。');
+          progressEl.style.display = 'none';
+          alert(`导入完成！共写入 ${totalUsers} 个用户的数据。页面将刷新。`);
           location.reload();
         } catch (err) {
           hideLoading();
+          document.getElementById('import-progress').style.display = 'none';
           alert('读取失败：' + err.message);
+          console.error(err);
         }
       };
       r.readAsText(file);
