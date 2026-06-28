@@ -1766,7 +1766,7 @@
       filtered.forEach(l => { const wd = getWakeDate(l); if (!byDate[wd]) { byDate[wd] = []; dateOrder.push(wd) } byDate[wd].push(l) });
       dateOrder.sort((a, b) => b.localeCompare(a));
       listEl.innerHTML = dateOrder.map(date => {
-        const segs = byDate[date].sort((a, b) => b.sleep.localeCompare(a.sleep)), total = segs.reduce((s, l) => s + l.duration, 0), rating = sleepRating(total), col = rating.cls === 'metric-good' ? 'var(--good)' : rating.cls === 'metric-warn' ? 'var(--warn)' : 'var(--bad)';
+        const segs = byDate[date].sort((a, b) => b.sleep.localeCompare(a.sleep)), total = unionSleepMinutes(segs), rating = sleepRating(total), col = rating.cls === 'metric-good' ? 'var(--good)' : rating.cls === 'metric-warn' ? 'var(--warn)' : 'var(--bad)';
         return `<div class="sleep-day-group"><div class="sleep-day-header"><span class="sleep-day-date">${fmtDate(date)}</span><span class="sleep-day-total" style="color:${col}">${fmtH(total)}</span><span class="sleep-day-segs">${rating.label}</span>${segs.length > 1 ? `<span class="sleep-day-segs">${segs.length}段</span>` : ''}</div>${segs.map(l => {
           const badges = [];
           if (l.date !== date) badges.push(`入睡日 ${fmtDate(l.date)}`);
@@ -1781,7 +1781,13 @@
           return `<div class="sleep-seg"><div style="flex:1"><div class="sleep-seg-time">${l.sleep} → ${l.wake} <span class="sleep-seg-dur">${fmtH(l.duration)}</span></div>${badges.length ? `<div class="sleep-seg-badges">${badges.join(' · ')}</div>` : ''}${preTags}${l.note ? `<div class="sleep-seg-badges">${l.note}</div>` : ''}</div><button class="edit-btn" data-sid="${l.id}">编辑</button><button class="del-btn" data-sdel="${l.id}">✕</button></div>`
         }).join('')}</div>`
       }).join('');
-      listEl.querySelectorAll('[data-sdel]').forEach(btn => btn.addEventListener('click', () => { if (!confirm('删除这段记录？')) return; DB.set('sleep', DB.get('sleep').filter(l => String(l.id) !== btn.dataset.sdel)); dbSync('sleep').then(() => renderSleep()); }));
+      listEl.querySelectorAll('[data-sdel]').forEach(btn => btn.addEventListener('click', async () => {
+        if (!confirm('删除这段记录？')) return;
+        const id = btn.dataset.sdel;
+        DB.set('sleep', DB.get('sleep').filter(l => String(l.id) !== id));
+        await dbDel('sleep', id);
+        renderSleep();
+      }));
       listEl.querySelectorAll('[data-sid]').forEach(btn => btn.addEventListener('click', () => {
         const l = getMigratedSleep().find(x => String(x.id) === btn.dataset.sid); if (!l) return;
         editingSleepId = l.id;
@@ -1859,13 +1865,33 @@
     function sleepRating(hours) { if (hours >= 9) return { label: '偏长', cls: 'metric-warn' }; if (hours >= 7) return { label: '充足', cls: 'metric-good' }; if (hours >= 6) return { label: '略不足', cls: 'metric-warn' }; if (hours >= 4) return { label: '不足', cls: 'metric-bad' }; return { label: '严重不足', cls: 'metric-bad' } }
 
     /* ═══════════════ DAILY SNAPSHOTS ═══════════════ */
+    // 计算多段睡眠区间的并集时长（分钟），避免重叠重复计算
+    function unionSleepMinutes(segs) {
+      // 每段转为 [start, end] 分钟，跨日段 end 加 1440
+      const intervals = segs.map(l => {
+        const s = timeToMin(l.sleep), e = timeToMin(l.wake);
+        return e > s ? [s, e] : [s, e + 1440];
+      });
+      // 按 start 排序，合并重叠区间
+      intervals.sort((a, b) => a[0] - b[0]);
+      let total = 0, cur = null;
+      for (const [s, e] of intervals) {
+        if (!cur) { cur = [s, e]; continue; }
+        if (s <= cur[1]) { cur[1] = Math.max(cur[1], e); } // 重叠，扩展
+        else { total += cur[1] - cur[0]; cur = [s, e]; }   // 不重叠，计入
+      }
+      if (cur) total += cur[1] - cur[0];
+      return total / 60; // 返回小时
+    }
+
     function buildDailySnapshots(logs, days = 30) {
       const dates = dateRange(days), byDate = {};
       logs.forEach(l => { const wd = getWakeDate(l); if (!byDate[wd]) byDate[wd] = []; byDate[wd].push(l) });
       return dates.map(date => {
         const segs = byDate[date] || [];
         if (!segs.length) return { date, hasData: false };
-        const totalSleep = segs.reduce((s, l) => s + l.duration, 0), segments = segs.length,
+        const totalSleep = unionSleepMinutes(segs),  // ← 并集，不重复计算重叠
+          segments = segs.length,
           firstSleepMin = Math.min(...segs.map(l => timeToMin(l.sleep))),
           avgFeel = segs.filter(l => l.feel).reduce((s, l, _, a) => s + l.feel / a.length, 0) || null,
           maxHead = Math.max(...segs.map(l => l.head || 1)),
@@ -2146,7 +2172,7 @@
           if (l.sp === '有') syms.push(`<span style="font-size:11px;padding:2px 7px;border-radius:4px;border:1px solid rgba(88,86,214,.3);color:#5856d6;background:rgba(88,86,214,.06)">睡眠瘫痪</span>`);
           if (l.period && l.period !== '非经期') syms.push(`<span style="font-size:11px;padding:2px 7px;border-radius:4px;border:1px solid rgba(255,149,0,.3);color:var(--warn);background:rgba(255,149,0,.06)">${l.period}</span>`);
         });
-        const total = segs.reduce((s, l) => s + l.duration, 0), rating = sleepRating(total), feelAvg = segs.filter(l => l.feel).reduce((s, l, _, a) => s + l.feel / a.length, 0), feelTxt = feelAvg ? feelLabels[Math.round(feelAvg)] : '';
+        const total = unionSleepMinutes(segs), rating = sleepRating(total), feelAvg = segs.filter(l => l.feel).reduce((s, l, _, a) => s + l.feel / a.length, 0), feelTxt = feelAvg ? feelLabels[Math.round(feelAvg)] : '';
         const preTags = [...new Set(segs.flatMap(l => l.preConditions || []))];
         const preHtml = preTags.length ? `<div class="pre-conditions-tags" style="margin-top:4px">${preTags.map(c => `<span class="pre-tag">${c}</span>`).join('')}</div>` : '';
         const reliefHtml = bd ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">${bd.reliefs?.map(r => `<span style="font-size:11px;padding:2px 7px;border-radius:4px;border:1px solid rgba(52,199,89,.3);color:var(--good);background:rgba(52,199,89,.06)">${r}</span>`).join('') || ''}${bd.degree != null ? `<span style="font-size:11px;padding:2px 7px;border-radius:4px;background:rgba(0,122,255,.08);color:var(--accent)">缓解${bd.degree}%</span>` : ''}</div>${bd.note ? `<div style="font-size:12px;color:var(--muted);margin-top:3px">${bd.note}</div>` : ''}` : `<div style="font-size:12px;color:var(--muted);margin-top:4px">未记录缓解</div>`;
@@ -2227,10 +2253,12 @@
       el.querySelectorAll('[data-sop-toggle]').forEach(e => e.addEventListener('click', () => document.getElementById('sop-body-' + e.dataset.sopToggle)?.classList.toggle('open')));
 
       // Wire up delete
-      el.querySelectorAll('[data-sop-del]').forEach(btn => btn.addEventListener('click', () => {
+      el.querySelectorAll('[data-sop-del]').forEach(btn => btn.addEventListener('click', async () => {
         if (!confirm('删除？')) return;
-        DB.set('sop', DB.get('sop').filter(s => String(s.id) !== btn.dataset.sopDel));
-        dbSync('sop').then(() => renderSOP());
+        const id = btn.dataset.sopDel;
+        DB.set('sop', DB.get('sop').filter(s => String(s.id) !== id));
+        await dbDel('sop', id);
+        renderSOP();
       }));
 
       // Wire up edit
@@ -2255,7 +2283,7 @@
     document.getElementById('goal-tag-input').addEventListener('keydown', e => { if (e.key !== 'Enter') return; e.preventDefault(); const v = e.target.value.trim(); if (!v) return; saveTag(v); renderGoalTagChips([...getSelected('goal-tag-chips'), v]); e.target.value = '' })
     document.getElementById('goal-add-btn').addEventListener('click', () => { editingGoalId = null; document.getElementById('goal-modal-title').textContent = '添加目标 / 待办'; document.getElementById('goal-text').value = ''; document.getElementById('goal-date').value = ''; document.querySelectorAll('#goal-type-chips .chip').forEach((c, i) => c.classList.toggle('selected', i === 0)); renderGoalTagChips(); openModal('goal-modal') })
     document.getElementById('goal-save-btn').addEventListener('click', () => { const text = document.getElementById('goal-text').value.trim(); if (!text) return alert('请填写内容'); const tags = getSelected('goal-tag-chips'); tags.forEach(saveTag); const goals = DB.get('goals'), entry = { text, tags, type: getSingleVal('goal-type-chips') || 'long', dueDate: document.getElementById('goal-date').value || null }; if (editingGoalId) { const idx = goals.findIndex(g => String(g.id) === String(editingGoalId)); if (idx >= 0) goals[idx] = { ...goals[idx], ...entry } } else goals.push({ id: Date.now(), done: false, created: today(), ...entry }); DB.set('goals', goals); closeModal('goal-modal'); dbSync('goals').then(() => renderGoals()) })
-    function renderGoals() { const goals = DB.get('goals'), renderList = (list, elId) => { const el = document.getElementById(elId); el.innerHTML = ''; if (!list.length) { el.innerHTML = '<div class="empty">暂无</div>'; return } list.forEach(g => { const div = document.createElement('div'); div.className = 'goal-item'; div.innerHTML = `<div class="g-check${g.done ? ' done' : ''}"></div><div style="flex:1"><div class="g-text${g.done ? ' done' : ''}">${g.text}</div><div class="g-meta">${g.dueDate ? `<span>${fmtDate(g.dueDate)}</span>` : ''} ${g.tags?.map(t => `<span class="g-tag">${t}</span>`).join('') || ''}</div></div><button class="edit-btn">编辑</button><button class="del-btn">✕</button>`; div.querySelector('.g-check').addEventListener('click', () => { const gs = DB.get('goals'), gx = gs.find(x => String(x.id) === String(g.id)); if (gx) gx.done = !gx.done; DB.set('goals', gs); dbSync('goals').then(() => renderGoals()) }); div.querySelector('.edit-btn').addEventListener('click', () => { editingGoalId = g.id; document.getElementById('goal-modal-title').textContent = '编辑'; document.getElementById('goal-text').value = g.text; document.getElementById('goal-date').value = g.dueDate || ''; document.querySelectorAll('#goal-type-chips .chip').forEach(c => c.classList.toggle('selected', c.dataset.val === g.type)); renderGoalTagChips(g.tags || []); openModal('goal-modal') }); div.querySelector('.del-btn').addEventListener('click', () => { DB.set('goals', DB.get('goals').filter(x => String(x.id) !== String(g.id))); dbSync('goals').then(() => renderGoals()) }); el.appendChild(div) }) }; renderList(goals.filter(g => g.type === 'long'), 'goal-long'); renderList(goals.filter(g => g.type === 'todo'), 'goal-todo') }
+    function renderGoals() { const goals = DB.get('goals'), renderList = (list, elId) => { const el = document.getElementById(elId); el.innerHTML = ''; if (!list.length) { el.innerHTML = '<div class="empty">暂无</div>'; return } list.forEach(g => { const div = document.createElement('div'); div.className = 'goal-item'; div.innerHTML = `<div class="g-check${g.done ? ' done' : ''}"></div><div style="flex:1"><div class="g-text${g.done ? ' done' : ''}">${g.text}</div><div class="g-meta">${g.dueDate ? `<span>${fmtDate(g.dueDate)}</span>` : ''} ${g.tags?.map(t => `<span class="g-tag">${t}</span>`).join('') || ''}</div></div><button class="edit-btn">编辑</button><button class="del-btn">✕</button>`; div.querySelector('.g-check').addEventListener('click', () => { const gs = DB.get('goals'), gx = gs.find(x => String(x.id) === String(g.id)); if (gx) gx.done = !gx.done; DB.set('goals', gs); dbSync('goals').then(() => renderGoals()) }); div.querySelector('.edit-btn').addEventListener('click', () => { editingGoalId = g.id; document.getElementById('goal-modal-title').textContent = '编辑'; document.getElementById('goal-text').value = g.text; document.getElementById('goal-date').value = g.dueDate || ''; document.querySelectorAll('#goal-type-chips .chip').forEach(c => c.classList.toggle('selected', c.dataset.val === g.type)); renderGoalTagChips(g.tags || []); openModal('goal-modal') }); div.querySelector('.del-btn').addEventListener('click', async () => { const id = String(g.id); DB.set('goals', DB.get('goals').filter(x => String(x.id) !== id)); await dbDel('goals', id); renderGoals() }); el.appendChild(div) }) }; renderList(goals.filter(g => g.type === 'long'), 'goal-long'); renderList(goals.filter(g => g.type === 'todo'), 'goal-todo') }
 
     /* ═══════════════ BACKUP — Firebase 主存储 + JSON 本地灾备 ═══════════════ */
 
