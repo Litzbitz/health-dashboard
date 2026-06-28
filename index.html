@@ -1178,19 +1178,14 @@
       color: var(--muted);
     }
 
-    .diary-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
-      margin-left: auto;
-    }
-
-    .diary-tag {
-      font-size: 11px;
-      padding: 2px 7px;
-      border-radius: 10px;
-      background: rgba(0, 122, 255, .08);
-      color: var(--accent);
+    .diary-title-text {
+      font-weight: 600;
+      font-size: 13.5px;
+      color: var(--text);
+      margin-left: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .diary-preview {
@@ -1392,6 +1387,7 @@
     <div class="modal">
       <div class="modal-title" id="diary-modal-title">写日记</div>
       <label>日期</label><input type="date" id="diary-date">
+      <label>标题</label><input type="text" id="diary-title" placeholder="给今天起个标题吧（手动输入）...">
       <label>心情</label>
       <div class="chips" id="diary-mood-chips" style="font-size:20px">
         <span class="chip selected" data-val="😊">😊</span>
@@ -1403,9 +1399,6 @@
         <span class="chip" data-val="😴">😴</span>
         <span class="chip" data-val="🤒">🤒</span>
       </div>
-      <label>标签（回车添加）</label>
-      <div class="chips" id="diary-tag-chips"></div>
-      <input type="text" id="diary-tag-input" placeholder="工作、身体、情绪……">
       <label>内容</label>
       <textarea id="diary-content" placeholder="今天……" style="min-height:160px;resize:vertical"></textarea>
       <div class="flex"><button class="btn" id="diary-save-btn">保存</button><button class="btn btn-ghost"
@@ -1600,7 +1593,6 @@
     function saveUsers(u) { LS.set('__users__', u) }
 
     /* ═══════════════ FIRESTORE DB LAYER ═══════════════ */
-    // users/{userId}/{collName}/{docId}
     function userCol(collName) {
       return collection(db, 'users', CU.id, collName);
     }
@@ -1630,7 +1622,7 @@
       }
     }
 
-    // Read all docs from subcollection → array
+    // Read all docs from subcollection
     async function dbGet(collName) {
       try {
         const snap = await getDocs(userCol(collName));
@@ -1641,7 +1633,7 @@
       }
     }
 
-    // Write single item (uses item.id as doc ID)
+    // Write single item
     async function dbSet(collName, item) {
       try {
         await setDoc(userDoc(collName, item.id), item);
@@ -1651,7 +1643,7 @@
       }
     }
 
-    // Delete single item by id
+    // Delete single item
     async function dbDel(collName, id) {
       try {
         await deleteDoc(userDoc(collName, id));
@@ -1661,9 +1653,8 @@
       }
     }
 
-    // Batch-write entire array (replaces whole collection)
+    // Batch-write entire array
     async function dbSetAll(collName, items) {
-      // delete existing docs first, then write new ones
       const snap = await getDocs(userCol(collName));
       const batch = writeBatch(db);
       snap.docs.forEach(d => batch.delete(d.ref));
@@ -1672,7 +1663,6 @@
     }
 
     /* ═══════════════ COMPAT SHIM: async DB used by all render fns ═══════════════ */
-    // Cache layer so sync render functions can work after initial load
     const _cache = { sleep: [], body: [], sop: [], goals: [], diary: [] };
 
     async function loadUserData() {
@@ -1691,14 +1681,11 @@
       }
     }
 
-    // Sync-style cache access (used by all existing render functions unchanged)
     const DB = {
       get(k) { return _cache[k] || [] },
-      // set() now writes to Firestore; callers must use DB.save()
       set(k, arr) { _cache[k] = arr; }
     };
 
-    // Save entire collection to Firestore (called after every mutation)
     async function dbSync(collName) {
       showLoading('保存中…');
       try {
@@ -1712,8 +1699,8 @@
     const painLabels = { 1: '无痛', 2: '轻微', 3: '中度', 4: '重度', 5: '剧烈' }
     function migratePainValue(v) {
       if (v == null || v === 0) return 1;
-      if (v <= 5) return v; // already new scale
-      return Math.min(5, Math.max(1, Math.ceil(v / 2))); // 0-10 → 1-5
+      if (v <= 5) return v;
+      return Math.min(5, Math.max(1, Math.ceil(v / 2)));
     }
     function migrateEntry(e) {
       if (!e._migrated) {
@@ -1737,11 +1724,10 @@
     function timeToH(t) { return timeToMin(t) / 60 }
     function calcDur(s, w) { let d = timeToMin(w) - timeToMin(s); if (d < 0) d += 1440; return d / 60 }
     function fmtH(h) { const hh = Math.floor(h), mm = Math.round((h - hh) * 60); return `${hh}h${mm ? mm + 'm' : ''}` }
-    /* function addDate(date,offset){const d=new Date(date+'T00:00:00');d.setDate(d.getDate()+offset);return d.toISOString().slice(0,10)} */
     function addDate(date, offset) {
-      const d = new Date(date + 'T00:00:00Z'); // 作为 UTC 时间解析
-      d.setUTCDate(d.getUTCDate() + offset);   // 使用 UTC 增减日期
-      return d.toISOString().slice(0, 10);     // 转换为 UTC 字符串（此时 slice 得到的日期完全符合预期）
+      const d = new Date(date + 'T00:00:00Z');
+      d.setUTCDate(d.getUTCDate() + offset);
+      return d.toISOString().slice(0, 10);
     }
 
     function getWakeDate(entry) { return timeToMin(entry.wake) <= timeToMin(entry.sleep) ? addDate(entry.date, 1) : entry.date }
@@ -1845,7 +1831,6 @@
         preConditions.push(otherInputVal);
       }
 
-      // 重叠检测：找出与新段时间有交叉的现有记录
       const allLogs = DB.get('sleep');
       const overlaps = findOverlappingSegs(sleep, wake, allLogs, editingSleepId);
       if (overlaps.length > 0) {
@@ -1965,7 +1950,6 @@
     function normalizeSleepOnsetForStability(min) { return min < 720 ? min + 1440 : min }
     function calcStdMins(values) { if (values.length < 2) return 0; const avg = values.reduce((s, v) => s + v, 0) / values.length; return Math.sqrt(values.reduce((s, v) => s + Math.pow(v - avg, 2), 0) / values.length) }
 
-    /* Linear regression slope: minutes shift per day */
     function calcTrendSlope(firstSleepMins) {
       if (firstSleepMins.length < 3) return { slope: 0, label: '数据不足', cls: 'metric-warn', desc: '至少记录3天' };
       const normalized = firstSleepMins.map(normalizeSleepOnsetForStability);
@@ -1994,20 +1978,13 @@
     function sleepRating(hours) { if (hours >= 9) return { label: '偏长', cls: 'metric-warn' }; if (hours >= 7) return { label: '充足', cls: 'metric-good' }; if (hours >= 6) return { label: '略不足', cls: 'metric-warn' }; if (hours >= 4) return { label: '不足', cls: 'metric-bad' }; return { label: '严重不足', cls: 'metric-bad' } }
 
     /* ═══════════════ SLEEP INTERVAL UTILS ═══════════════ */
-    // 把一段睡眠记录转为绝对分钟区间，统一到同一坐标轴
-    // 规则：入睡时间 < 正午(720) 视为凌晨，加 1440 偏移，确保跨日段能正确比较
     function segToInterval(l) {
       let s = timeToMin(l.sleep), e = timeToMin(l.wake);
-      // 跨日（e <= s）：e 加 1440
       if (e <= s) e += 1440;
-      // 如果入睡在凌晨（< 12:00），说明是前一天深夜延续，s 加 1440 对齐
-      // 判断依据：s < 720 且 当前这天 wakeDate 比 date 晚一天（即真正跨日段）
-      // 更简单的启发：同一 wakeDate 分组内，若 s < 720，偏移到 s+1440
       if (s < 720) { s += 1440; e += 1440; }
       return [s, e];
     }
 
-    // 计算多段睡眠的并集时长（小时），正确处理跨日和重叠
     function unionSleepMinutes(segs) {
       if (!segs.length) return 0;
       const intervals = segs.map(segToInterval);
@@ -2015,14 +1992,13 @@
       let total = 0, cur = intervals[0];
       for (let i = 1; i < intervals.length; i++) {
         const [s, e] = intervals[i];
-        if (s <= cur[1]) { cur = [cur[0], Math.max(cur[1], e)]; } // 重叠或包含，合并
-        else { total += cur[1] - cur[0]; cur = [s, e]; }           // 不重叠，计入
+        if (s <= cur[1]) { cur = [cur[0], Math.max(cur[1], e)]; }
+        else { total += cur[1] - cur[0]; cur = [s, e]; }
       }
       total += cur[1] - cur[0];
-      return total / 60; // 返回小时
+      return total / 60;
     }
 
-    // 检测新段是否与现有段重叠，返回重叠的段列表
     function findOverlappingSegs(newSleep, newWake, existingSegs, excludeId = null) {
       const [ns, ne] = (() => {
         let s = timeToMin(newSleep), e = timeToMin(newWake);
@@ -2033,7 +2009,7 @@
       return existingSegs.filter(l => {
         if (excludeId && String(l.id) === String(excludeId)) return false;
         const [s, e] = segToInterval(l);
-        return ns < e && ne > s; // 区间相交
+        return ns < e && ne > s;
       });
     }
 
@@ -2043,7 +2019,7 @@
       return dates.map(date => {
         const segs = byDate[date] || [];
         if (!segs.length) return { date, hasData: false };
-        const totalSleep = unionSleepMinutes(segs),  // ← 并集，不重复计算重叠
+        const totalSleep = unionSleepMinutes(segs),
           segments = segs.length,
           firstSleepMin = Math.min(...segs.map(l => timeToMin(l.sleep))),
           avgFeel = segs.filter(l => l.feel).reduce((s, l, _, a) => s + l.feel / a.length, 0) || null,
@@ -2100,7 +2076,6 @@
         const neckDays = withData.filter(d => d.maxNeck > 1);
         let neckLabel = '数据不足', neckCls = 'metric-warn', neckDesc = '需更多数据', neckTrigger = '—';
         if (neckDays.length >= 2) {
-          // Check sedentary correlation
           const neckSedentary = neckDays.filter(d => d.preConditions.includes('久坐'));
           const neckPct = Math.round(neckSedentary.length / neckDays.length * 100);
           neckTrigger = '久坐后'; neckDesc = `痛↑${neckPct}%`;
@@ -2117,7 +2092,6 @@
       <div class="metric-box"><div class="metric-label">头痛关联</div><div class="metric-val ${headCls}">${headTrigger}</div><div class="metric-sub">${headDesc}</div></div>
       <div class="metric-box"><div class="metric-label">肩颈关联</div><div class="metric-val ${neckCls}">${neckTrigger}</div><div class="metric-sub">${neckDesc}</div></div>`;
 
-        // Rating expand
         document.getElementById('rating-expand-area').innerHTML = `
       <button class="expand-toggle" id="rating-toggle">▸ 睡眠评级详情</button>
       <div class="expand-body" id="rating-body">
@@ -2132,9 +2106,7 @@
         });
       }
 
-      // Phase trend
       renderPhaseTrend(all, phaseFilterDays);
-      // Dual-color heatmaps
       renderDualHeatmap('headache-heatmap', buildDailySnapshots(all, 60), '头痛', d => d.maxPreHead, d => d.maxHead, [175, 82, 222], [255, 59, 48]);
       renderDualHeatmap('neck-heatmap', buildDailySnapshots(all, 60), '肩颈痛', d => d.maxPreNeck, d => d.maxNeck, [0, 122, 255], [255, 149, 0]);
       renderPatterns(buildDailySnapshots(all, 60));
@@ -2166,19 +2138,16 @@
       const pad = { top: 20, right: 20, bottom: 35, left: 48 };
       const cw = W - pad.left - pad.right, ch = H - pad.top - pad.bottom;
 
-      // Y axis: time range (auto-fit with padding)
       const allMins = dataPoints.map(d => d.min);
       const minY = Math.min(...allMins) - 60, maxY = Math.max(...allMins) + 60;
       const yRange = maxY - minY;
 
-      // X axis
       const dates = snapshots.map(s => s.date);
       const xStep = cw / (dates.length - 1 || 1);
 
       function toX(i) { return pad.left + i * xStep }
       function toY(min) { return pad.top + ch - (min - minY) / yRange * ch }
 
-      // Grid lines & Y labels
       ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 1;
       const yTickCount = 5;
       for (let i = 0; i <= yTickCount; i++) {
@@ -2189,12 +2158,10 @@
         ctx.fillText(minToClock(Math.round(min) % 1440 || (Math.round(min) - 1440)), pad.left - 6, y + 3);
       }
 
-      // X labels
       ctx.textAlign = 'center'; ctx.fillStyle = '#8e8e93'; ctx.font = '10px -apple-system,sans-serif';
       const labelEvery = Math.max(1, Math.floor(dates.length / 7));
       dates.forEach((d, i) => { if (i % labelEvery === 0 || i === dates.length - 1) ctx.fillText(fmtDateShort(d), toX(i), H - pad.bottom + 18) });
 
-      // Data line
       const pointXY = [];
       let dpIdx = 0;
       dates.forEach((date, i) => {
@@ -2210,7 +2177,6 @@
         pointXY.forEach((p, i) => { if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y) });
         ctx.stroke();
 
-        // Gradient fill
         const grad = ctx.createLinearGradient(0, pad.top, 0, H - pad.bottom);
         grad.addColorStop(0, 'rgba(0,122,255,0.15)'); grad.addColorStop(1, 'rgba(0,122,255,0.02)');
         ctx.fillStyle = grad; ctx.beginPath();
@@ -2218,7 +2184,6 @@
         pointXY.forEach(p => ctx.lineTo(p.x, p.y));
         ctx.lineTo(pointXY[pointXY.length - 1].x, H - pad.bottom); ctx.closePath(); ctx.fill();
 
-        // Data points
         pointXY.forEach(p => {
           ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
           ctx.fillStyle = '#007aff'; ctx.fill();
@@ -2267,7 +2232,6 @@
         lines.push({ text: `最近 ${headDays.length} 次头痛中，${headShort.length} 次（${pct}%）发生在睡眠不足6小时后`, strong: pct >= 60 });
         const headPeriod = headDays.filter(s => s.period === '经期中' || s.period === '经期前');
         if (headDays.length >= 3 && headPeriod.length >= 1) { const p = Math.round(headPeriod.length / headDays.length * 100); lines.push({ text: `${headDays.length} 次头痛中 ${headPeriod.length} 次（${p}%）发生在经期前或经期中`, strong: p >= 50 }) }
-        // Pre-condition correlations for headache
         const preCondCounts = {};
         headDays.forEach(d => d.preConditions.forEach(c => { preCondCounts[c] = (preCondCounts[c] || 0) + 1 }));
         Object.entries(preCondCounts).sort((a, b) => b[1] - a[1]).slice(0, 2).forEach(([cond, count]) => {
@@ -2281,7 +2245,6 @@
         if (pct >= 40) lines.push({ text: `${neckDays.length} 次肩颈痛中 ${neckPoor.length} 次（${pct}%）睡醒感受较差（≤2/5）`, strong: pct >= 60 });
         const neckLate = neckDays.filter(s => s.firstSleepH > 26);
         if (neckLate.length >= 2) lines.push({ text: `肩颈痛中 ${Math.round(neckLate.length / neckDays.length * 100)}% 在凌晨2点后入睡的情况下发生`, strong: false });
-        // Pre-condition correlations for neck
         const preCondCounts = {};
         neckDays.forEach(d => d.preConditions.forEach(c => { preCondCounts[c] = (preCondCounts[c] || 0) + 1 }));
         Object.entries(preCondCounts).sort((a, b) => b[1] - a[1]).slice(0, 2).forEach(([cond, count]) => {
@@ -2343,7 +2306,6 @@
       const sops = DB.get('sop'), el = document.getElementById('sop-list');
       if (!sops.length) { el.innerHTML = '<div class="empty">还没有 SOP</div>'; return }
 
-      // Group sops by category
       const groups = {};
       sops.forEach(s => {
         const cat = (s.cat && s.cat.trim()) ? s.cat.trim() : '未分类';
@@ -2351,7 +2313,6 @@
         groups[cat].push(s);
       });
 
-      // Sort categories: put '未分类' at the end, others alphabetically sorted
       const groupNames = Object.keys(groups).sort((a, b) => {
         if (a === '未分类') return 1;
         if (b === '未分类') return -1;
@@ -2390,7 +2351,6 @@
         `;
       }).join('');
 
-      // Wire up toggle for groups
       el.querySelectorAll('[data-sop-group-toggle]').forEach(e => {
         e.addEventListener('click', () => {
           const idx = e.dataset.sopGroupToggle;
@@ -2402,10 +2362,8 @@
         });
       });
 
-      // Wire up toggle for individual sops
       el.querySelectorAll('[data-sop-toggle]').forEach(e => e.addEventListener('click', () => document.getElementById('sop-body-' + e.dataset.sopToggle)?.classList.toggle('open')));
 
-      // Wire up delete
       el.querySelectorAll('[data-sop-del]').forEach(btn => btn.addEventListener('click', async () => {
         if (!confirm('删除？')) return;
         const id = btn.dataset.sopDel;
@@ -2414,7 +2372,6 @@
         renderSOP();
       }));
 
-      // Wire up edit
       el.querySelectorAll('[data-sop-edit]').forEach(btn => btn.addEventListener('click', () => {
         const s = DB.get('sop').find(x => String(x.id) === btn.dataset.sopEdit);
         if (!s) return;
@@ -2440,44 +2397,17 @@
 
     /* ═══════════════ DIARY / REFLECTION ═══════════════ */
     let editingDiaryId = null, diaryFilterDays = 30;
-    const DIARY_DEFAULT_TAGS = ['工作', '身体', '情绪', '生活', '想法'];
-
-    function getDiaryTags() { return [...new Set([...DIARY_DEFAULT_TAGS, ...LS.get('__diary_tags__', [])])] }
-    function saveDiaryTag(t) { const tags = LS.get('__diary_tags__', []); if (!tags.includes(t)) { tags.push(t); LS.set('__diary_tags__', tags) } }
-
-    function renderDiaryTagChips(sel = []) {
-      const c = document.getElementById('diary-tag-chips');
-      c.innerHTML = '';
-      getDiaryTags().forEach(t => {
-        const s = document.createElement('span');
-        s.className = 'chip' + (sel.includes(t) ? ' selected' : '');
-        s.textContent = t;
-        s.addEventListener('click', () => s.classList.toggle('selected'));
-        c.appendChild(s);
-      });
-    }
 
     function resetDiaryModal() {
       editingDiaryId = null;
       document.getElementById('diary-modal-title').textContent = '写日记';
       document.getElementById('diary-date').value = today();
+      document.getElementById('diary-title').value = '';
       document.getElementById('diary-content').value = '';
-      document.getElementById('diary-tag-input').value = '';
       document.querySelectorAll('#diary-mood-chips .chip').forEach((c, i) => c.classList.toggle('selected', i === 0));
-      renderDiaryTagChips();
     }
 
     document.getElementById('diary-add-btn').addEventListener('click', () => { resetDiaryModal(); openModal('diary-modal') });
-
-    document.getElementById('diary-tag-input').addEventListener('keydown', e => {
-      if (e.key !== 'Enter') return;
-      e.preventDefault();
-      const v = e.target.value.trim();
-      if (!v) return;
-      saveDiaryTag(v);
-      renderDiaryTagChips([...getSelected('diary-tag-chips'), v]);
-      e.target.value = '';
-    });
 
     bindSingle('diary-mood-chips');
 
@@ -2486,9 +2416,8 @@
       const content = document.getElementById('diary-content').value.trim();
       if (!date || !content) return alert('请填写日期和内容');
       const mood = getSingleVal('diary-mood-chips') || '😊';
-      const tags = getSelected('diary-tag-chips');
-      tags.forEach(saveDiaryTag);
-      const entry = { date, mood, tags, content, updatedAt: new Date().toISOString() };
+      const title = document.getElementById('diary-title').value.trim();
+      const entry = { date, mood, title, content, updatedAt: new Date().toISOString() };
       const diaries = DB.get('diary');
       if (editingDiaryId) {
         const idx = diaries.findIndex(d => String(d.id) === String(editingDiaryId));
@@ -2528,13 +2457,14 @@
       diaries.forEach(d => {
         const entry = document.createElement('div');
         entry.className = 'diary-entry';
-        const tagsHtml = (d.tags || []).map(t => `<span class="diary-tag">${t}</span>`).join('');
         const preview = (d.content || '').replace(/\n/g, ' ').slice(0, 60) + ((d.content || '').length > 60 ? '…' : '');
+        const escapedTitle = (d.title || '').replace(/</g, '&lt;');
+
         entry.innerHTML = `
           <div class="diary-entry-header">
             <span class="diary-mood">${d.mood || '😊'}</span>
             <span class="diary-date">${fmtDate(d.date)}</span>
-            <div class="diary-tags">${tagsHtml}</div>
+            ${d.title ? `<span class="diary-title-text">${escapedTitle}</span>` : ''}
           </div>
           <div class="diary-preview">${preview}</div>
           <div class="diary-full" id="diary-full-${d.id}">${(d.content || '').replace(/</g, '&lt;')}</div>
@@ -2543,7 +2473,6 @@
             <button class="del-btn" data-diary-del="${d.id}">删除</button>
           </div>`;
 
-        // 点击展开/收起
         entry.addEventListener('click', ev => {
           if (ev.target.closest('button')) return;
           const full = document.getElementById('diary-full-' + d.id);
@@ -2557,10 +2486,9 @@
           editingDiaryId = d.id;
           document.getElementById('diary-modal-title').textContent = '编辑日记';
           document.getElementById('diary-date').value = d.date;
+          document.getElementById('diary-title').value = d.title || '';
           document.getElementById('diary-content').value = d.content || '';
-          document.getElementById('diary-tag-input').value = '';
           document.querySelectorAll('#diary-mood-chips .chip').forEach(c => c.classList.toggle('selected', c.dataset.val === d.mood));
-          renderDiaryTagChips(d.tags || []);
           openModal('diary-modal');
         });
 
@@ -2575,10 +2503,8 @@
       });
     }
 
-    // 支持的子集合（扩展时在这里加）
     const COLLECTIONS = ['sleep', 'body', 'sop', 'goals', 'diary'];
 
-    // 新导出格式 v7：users 以 userId 为 key 的 map
     async function exportData() {
       showLoading('导出中…');
       try {
@@ -2611,12 +2537,9 @@
       }
     }
 
-    // 将一组 items 以原有 id 批量 upsert 到 Firestore（500条一批）
     async function batchUpsert(collName, items) {
       if (!items || !items.length) return;
-      // 确保每条数据有 id
       const valid = items.filter(x => x && x.id != null);
-      // Firestore batch 最多 500 次操作
       for (let i = 0; i < valid.length; i += 500) {
         const chunk = valid.slice(i, i + 500);
         const batch = writeBatch(db);
@@ -2625,9 +2548,7 @@
       }
     }
 
-    // 兼容旧格式（v5/v6 用 users 数组 + userData 对象）和新格式（v7 用 users map）
     function normalizeBackup(data) {
-      // v7 格式
       if (data.version === 7 && data.users && !Array.isArray(data.users)) {
         const profiles = [];
         const userData = {};
@@ -2641,13 +2562,11 @@
         }
         return { profiles, userData };
       }
-      // 旧格式 v5/v6：users 是数组，userData 是 { userId: { sleep, body, ... } }
       if (Array.isArray(data.users)) {
         const userData = {};
         for (const u of data.users) {
           userData[u.id] = {};
           for (const col of COLLECTIONS) {
-            // 旧格式 body 可能叫 body，pain 叫 pain
             userData[u.id][col] = (data.userData?.[u.id]?.[col]) || [];
           }
         }
@@ -2675,7 +2594,6 @@
           progressEl.style.display = 'block';
           const savedCU = CU;
 
-          // 合并用户列表（不覆盖已有用户，补充新用户）
           const existingUsers = getUsers();
           const mergedUsers = [...existingUsers];
           for (const p of profiles) {
