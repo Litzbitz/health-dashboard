@@ -1725,6 +1725,15 @@
         preConditions.push(otherInputVal);
       }
 
+      // 重叠检测：找出与新段时间有交叉的现有记录
+      const allLogs = DB.get('sleep');
+      const overlaps = findOverlappingSegs(sleep, wake, allLogs, editingSleepId);
+      if (overlaps.length > 0) {
+        const overlapDesc = overlaps.map(l => `${l.sleep}→${l.wake}（${fmtDate(l.date)}）`).join('、');
+        const proceed = confirm(`⚠️ 时间段重叠\n\n新记录 ${sleep}→${wake} 与以下记录有重叠：\n${overlapDesc}\n\n确定要继续保存吗？`);
+        if (!proceed) return;
+      }
+
       const entry = {
         id: editingSleepId || Date.now(), date, sleep, wake,
         duration: +calcDur(sleep, wake).toFixed(2),
@@ -1864,24 +1873,48 @@
 
     function sleepRating(hours) { if (hours >= 9) return { label: '偏长', cls: 'metric-warn' }; if (hours >= 7) return { label: '充足', cls: 'metric-good' }; if (hours >= 6) return { label: '略不足', cls: 'metric-warn' }; if (hours >= 4) return { label: '不足', cls: 'metric-bad' }; return { label: '严重不足', cls: 'metric-bad' } }
 
-    /* ═══════════════ DAILY SNAPSHOTS ═══════════════ */
-    // 计算多段睡眠区间的并集时长（分钟），避免重叠重复计算
+    /* ═══════════════ SLEEP INTERVAL UTILS ═══════════════ */
+    // 把一段睡眠记录转为绝对分钟区间，统一到同一坐标轴
+    // 规则：入睡时间 < 正午(720) 视为凌晨，加 1440 偏移，确保跨日段能正确比较
+    function segToInterval(l) {
+      let s = timeToMin(l.sleep), e = timeToMin(l.wake);
+      // 跨日（e <= s）：e 加 1440
+      if (e <= s) e += 1440;
+      // 如果入睡在凌晨（< 12:00），说明是前一天深夜延续，s 加 1440 对齐
+      // 判断依据：s < 720 且 当前这天 wakeDate 比 date 晚一天（即真正跨日段）
+      // 更简单的启发：同一 wakeDate 分组内，若 s < 720，偏移到 s+1440
+      if (s < 720) { s += 1440; e += 1440; }
+      return [s, e];
+    }
+
+    // 计算多段睡眠的并集时长（小时），正确处理跨日和重叠
     function unionSleepMinutes(segs) {
-      // 每段转为 [start, end] 分钟，跨日段 end 加 1440
-      const intervals = segs.map(l => {
-        const s = timeToMin(l.sleep), e = timeToMin(l.wake);
-        return e > s ? [s, e] : [s, e + 1440];
-      });
-      // 按 start 排序，合并重叠区间
+      if (!segs.length) return 0;
+      const intervals = segs.map(segToInterval);
       intervals.sort((a, b) => a[0] - b[0]);
-      let total = 0, cur = null;
-      for (const [s, e] of intervals) {
-        if (!cur) { cur = [s, e]; continue; }
-        if (s <= cur[1]) { cur[1] = Math.max(cur[1], e); } // 重叠，扩展
-        else { total += cur[1] - cur[0]; cur = [s, e]; }   // 不重叠，计入
+      let total = 0, cur = intervals[0];
+      for (let i = 1; i < intervals.length; i++) {
+        const [s, e] = intervals[i];
+        if (s <= cur[1]) { cur = [cur[0], Math.max(cur[1], e)]; } // 重叠或包含，合并
+        else { total += cur[1] - cur[0]; cur = [s, e]; }           // 不重叠，计入
       }
-      if (cur) total += cur[1] - cur[0];
+      total += cur[1] - cur[0];
       return total / 60; // 返回小时
+    }
+
+    // 检测新段是否与现有段重叠，返回重叠的段列表
+    function findOverlappingSegs(newSleep, newWake, existingSegs, excludeId = null) {
+      const [ns, ne] = (() => {
+        let s = timeToMin(newSleep), e = timeToMin(newWake);
+        if (e <= s) e += 1440;
+        if (s < 720) { s += 1440; e += 1440; }
+        return [s, e];
+      })();
+      return existingSegs.filter(l => {
+        if (excludeId && String(l.id) === String(excludeId)) return false;
+        const [s, e] = segToInterval(l);
+        return ns < e && ne > s; // 区间相交
+      });
     }
 
     function buildDailySnapshots(logs, days = 30) {
