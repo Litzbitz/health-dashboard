@@ -1083,32 +1083,66 @@
     }
 
     .sop-group {
-      border-bottom: 1px solid var(--border);
+      margin-bottom: 8px;
     }
+
     .sop-group:last-child {
-      border-bottom: none;
+      margin-bottom: 0;
     }
+
     .sop-group-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 12px 6px;
+      padding: 10px 14px;
       cursor: pointer;
       font-weight: 600;
-      font-size: 14px;
+      font-size: 13px;
       color: var(--text);
       user-select: none;
-      transition: background-color 0.15s;
-    }
-    .sop-group-header:hover {
       background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      transition: background-color 0.15s, border-color 0.15s;
     }
+
+    .sop-group-header:hover {
+      border-color: var(--accent);
+      background: rgba(0, 122, 255, 0.05);
+    }
+
+    .sop-group-header.open {
+      border-color: var(--accent);
+      background: rgba(0, 122, 255, 0.07);
+      color: var(--accent);
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+
     .sop-group-content {
       display: none;
-      padding: 4px 8px 12px;
+      padding: 0 8px 8px;
+      border: 1px solid var(--accent);
+      border-top: none;
+      border-bottom-left-radius: 10px;
+      border-bottom-right-radius: 10px;
+      background: var(--surface);
     }
+
     .sop-group-content.open {
       display: block;
+    }
+
+    .sop-group-arrow {
+      font-size: 11px;
+      color: var(--muted);
+      transition: transform 0.2s;
+      display: inline-block;
+    }
+
+    .sop-group-header.open .sop-group-arrow {
+      transform: rotate(180deg);
+      color: var(--accent);
     }
   </style>
 </head>
@@ -1142,7 +1176,7 @@
     <main>
       <div id="backup-banner" class="backup-banner" style="display:none">
         <span class="backup-text" id="backup-text">距离上次备份已超过14天，建议导出备份</span>
-        <button onclick="exportData()">立即备份</button>
+        <button onclick="document.getElementById('export-btn')?.click()">立即备份</button>
       </div>
       <div class="page active" id="page-sleep">
         <div class="section-header"><span class="section-title">睡眠记录</span><button class="btn btn-sm"
@@ -1402,22 +1436,155 @@
   <div class="modal-overlay" id="io-modal">
     <div class="modal">
       <div class="modal-title">数据备份 & 恢复</div>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:10px">导出所有用户数据为 health-backup.json</p><button
-        class="btn" onclick="exportData()" style="margin-bottom:16px">导出 health-backup.json</button>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:10px">从 Firestore 导出所有用户数据为 JSON 文件</p>
+      <button class="btn" id="export-btn" style="margin-bottom:16px">导出 health-backup.json</button>
       <hr style="border:none;border-top:1px solid var(--border);margin-bottom:14px">
       <p style="font-size:13px;color:var(--muted);margin-bottom:8px">导入会覆盖当前所有数据</p><input type="file" id="import-file"
         accept=".json">
-      <div class="flex" style="margin-top:8px"><button class="btn btn-warn" onclick="importData()">导入并恢复</button><button
+      <div class="flex" style="margin-top:8px"><button class="btn btn-warn" id="import-btn">导入并恢复</button><button
           class="btn btn-ghost" data-close="io-modal">关闭</button></div>
     </div>
   </div>
 
-  <script>
-    /* ═══════════════ STORAGE ═══════════════ */
-    const LS = { get(k, d = []) { try { const v = localStorage.getItem(k); return v !== null ? JSON.parse(v) : d } catch (e) { return d } }, set(k, v) { localStorage.setItem(k, JSON.stringify(v)) }, remove(k) { localStorage.removeItem(k) } }
-    let CU = null
-    function getUsers() { return LS.get('__users__', []) } function saveUsers(u) { LS.set('__users__', u) }
-    const DB = { get(k) { return LS.get((CU?.id || 'anon') + '_' + k, []) }, set(k, v) { LS.set((CU?.id || 'anon') + '_' + k, v) } }
+  <script type="module">
+    /* ═══════════════ FIREBASE INIT ═══════════════ */
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import {
+      getFirestore, collection, doc, getDocs, getDoc,
+      setDoc, deleteDoc, writeBatch, query, orderBy
+    } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCssCfYu1UCq34LpCBPM2UfOhVln95MGtY",
+      authDomain: "axis-8907c.firebaseapp.com",
+      projectId: "axis-8907c",
+      storageBucket: "axis-8907c.firebasestorage.app",
+      messagingSenderId: "394686163525",
+      appId: "1:394686163525:web:6ca7cc558d781399bb112c",
+      measurementId: "G-WVMWEWVEFJ"
+    };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    /* ═══════════════ LOCAL STORAGE (users + ui prefs only) ═══════════════ */
+    const LS = {
+      get(k, d = []) { try { const v = localStorage.getItem(k); return v !== null ? JSON.parse(v) : d } catch (e) { return d } },
+      set(k, v) { localStorage.setItem(k, JSON.stringify(v)) },
+      remove(k) { localStorage.removeItem(k) }
+    }
+
+    /* ═══════════════ CURRENT USER ═══════════════ */
+    let CU = null;
+    function getUsers() { return LS.get('__users__', []) }
+    function saveUsers(u) { LS.set('__users__', u) }
+
+    /* ═══════════════ FIRESTORE DB LAYER ═══════════════ */
+    // users/{userId}/{collName}/{docId}
+    function userCol(collName) {
+      return collection(db, 'users', CU.id, collName);
+    }
+    function userDoc(collName, docId) {
+      return doc(db, 'users', CU.id, collName, String(docId));
+    }
+
+    // Loading state
+    let _loadingCount = 0;
+    function showLoading(msg = '同步中…') {
+      _loadingCount++;
+      let el = document.getElementById('__fb_loading__');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = '__fb_loading__';
+        el.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.72);color:#fff;font-size:13px;padding:8px 18px;border-radius:20px;z-index:9999;backdrop-filter:blur(8px);transition:opacity .2s';
+        document.body.appendChild(el);
+      }
+      el.textContent = msg;
+      el.style.opacity = '1';
+    }
+    function hideLoading() {
+      _loadingCount = Math.max(0, _loadingCount - 1);
+      if (_loadingCount === 0) {
+        const el = document.getElementById('__fb_loading__');
+        if (el) el.style.opacity = '0';
+      }
+    }
+
+    // Read all docs from subcollection → array
+    async function dbGet(collName) {
+      try {
+        const snap = await getDocs(userCol(collName));
+        return snap.docs.map(d => ({ ...d.data() }));
+      } catch (e) {
+        console.error('dbGet error', collName, e);
+        return [];
+      }
+    }
+
+    // Write single item (uses item.id as doc ID)
+    async function dbSet(collName, item) {
+      try {
+        await setDoc(userDoc(collName, item.id), item);
+      } catch (e) {
+        console.error('dbSet error', collName, e);
+        throw e;
+      }
+    }
+
+    // Delete single item by id
+    async function dbDel(collName, id) {
+      try {
+        await deleteDoc(userDoc(collName, id));
+      } catch (e) {
+        console.error('dbDel error', collName, e);
+        throw e;
+      }
+    }
+
+    // Batch-write entire array (replaces whole collection)
+    async function dbSetAll(collName, items) {
+      // delete existing docs first, then write new ones
+      const snap = await getDocs(userCol(collName));
+      const batch = writeBatch(db);
+      snap.docs.forEach(d => batch.delete(d.ref));
+      items.forEach(item => batch.set(userDoc(collName, item.id), item));
+      await batch.commit();
+    }
+
+    /* ═══════════════ COMPAT SHIM: async DB used by all render fns ═══════════════ */
+    // Cache layer so sync render functions can work after initial load
+    const _cache = { sleep: [], body: [], sop: [], goals: [] };
+
+    async function loadUserData() {
+      showLoading('加载数据…');
+      try {
+        const [sleep, body, sop, goals] = await Promise.all([
+          dbGet('sleep'), dbGet('body'), dbGet('sop'), dbGet('goals')
+        ]);
+        _cache.sleep = sleep;
+        _cache.body = body;
+        _cache.sop = sop;
+        _cache.goals = goals;
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // Sync-style cache access (used by all existing render functions unchanged)
+    const DB = {
+      get(k) { return _cache[k] || [] },
+      // set() now writes to Firestore; callers must use DB.save()
+      set(k, arr) { _cache[k] = arr; }
+    };
+
+    // Save entire collection to Firestore (called after every mutation)
+    async function dbSync(collName) {
+      showLoading('保存中…');
+      try {
+        await dbSetAll(collName, _cache[collName] || []);
+      } finally {
+        hideLoading();
+      }
+    }
 
     /* ═══════════════ PAIN SCALE ═══════════════ */
     const painLabels = { 1: '无痛', 2: '轻微', 3: '中度', 4: '重度', 5: '剧烈' }
@@ -1462,9 +1629,19 @@
     /* ═══════════════ USER MANAGEMENT ═══════════════ */
     function initApp() { let u = getUsers(); if (!u.length) { u = [{ id: 'user_default', name: '我', avatar: '🙋' }]; saveUsers(u) } renderUserGrid() }
     function renderUserGrid() { const users = getUsers(), g = document.getElementById('user-grid'); g.innerHTML = ''; users.forEach(u => { const d = document.createElement('div'); d.className = 'user-card'; d.innerHTML = `<div class="u-avatar">${u.avatar}</div><div class="u-name">${u.name}</div>`; d.addEventListener('click', () => loginUser(u.id)); g.appendChild(d) }); const add = document.createElement('div'); add.className = 'user-card user-add'; add.innerHTML = '<div class="u-avatar">＋</div><div class="u-name">添加用户</div>'; add.addEventListener('click', () => openModal('add-user-modal')); g.appendChild(add) }
-    function loginUser(id) { const u = getUsers().find(x => x.id === id); if (!u) return; CU = u; document.getElementById('user-screen').style.display = 'none'; document.getElementById('app').style.display = 'block'; document.getElementById('nav-avatar').textContent = u.avatar; document.getElementById('nav-name').textContent = u.name; checkBackupBanner(); renderSleep() }
+    async function loginUser(id) {
+      const u = getUsers().find(x => x.id === id); if (!u) return;
+      CU = u;
+      document.getElementById('user-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      document.getElementById('nav-avatar').textContent = u.avatar;
+      document.getElementById('nav-name').textContent = u.name;
+      checkBackupBanner();
+      await loadUserData();
+      renderSleep();
+    }
     function switchUser() { CU = null; document.getElementById('app').style.display = 'none'; document.getElementById('user-screen').style.display = 'flex'; renderUserGrid() }
-    function renderManageList() { const users = getUsers(), el = document.getElementById('manage-list'); el.innerHTML = ''; users.forEach(u => { const row = document.createElement('div'); row.className = 'mgr-row'; row.innerHTML = `<span style="font-size:22px">${u.avatar}</span><span style="flex:1;font-weight:500;padding:0 8px">${u.name}</span>`; const btn = document.createElement('button'); btn.className = 'btn btn-sm' + (users.length > 1 ? ' btn-danger' : ' btn-ghost'); btn.textContent = users.length > 1 ? '删除' : '不可删除'; btn.disabled = users.length <= 1; btn.addEventListener('click', () => { if (users.length <= 1) return alert('至少保留一个用户'); if (!confirm(`删除「${u.name}」及其所有数据？`)) return; saveUsers(getUsers().filter(x => x.id !== u.id));['sleep', 'body', 'sop', 'goals'].forEach(k => LS.remove(u.id + '_' + k)); if (CU && CU.id === u.id) switchUser(); else { renderManageList(); renderUserGrid() } }); row.appendChild(btn); el.appendChild(row) }) }
+    function renderManageList() { const users = getUsers(), el = document.getElementById('manage-list'); el.innerHTML = ''; users.forEach(u => { const row = document.createElement('div'); row.className = 'mgr-row'; row.innerHTML = `<span style="font-size:22px">${u.avatar}</span><span style="flex:1;font-weight:500;padding:0 8px">${u.name}</span>`; const btn = document.createElement('button'); btn.className = 'btn btn-sm' + (users.length > 1 ? ' btn-danger' : ' btn-ghost'); btn.textContent = users.length > 1 ? '删除' : '不可删除'; btn.disabled = users.length <= 1; btn.addEventListener('click', () => { if (users.length <= 1) return alert('至少保留一个用户'); if (!confirm(`删除「${u.name}」及其所有数据？`)) return; saveUsers(getUsers().filter(x => x.id !== u.id)); if (CU && CU.id === u.id) switchUser(); else { renderManageList(); renderUserGrid() } }); row.appendChild(btn); el.appendChild(row) }) }
     function addNewUser() { const name = document.getElementById('new-name').value.trim(); const avatar = document.querySelector('#avatar-chips .chip.selected')?.textContent || '🙋'; if (!name) return alert('请输入名字'); const users = getUsers(); users.push({ id: 'user_' + Date.now(), name, avatar }); saveUsers(users); document.getElementById('new-name').value = ''; closeModal('add-user-modal'); renderUserGrid(); renderManageList() }
 
     /* ═══════════════ MODAL ═══════════════ */
@@ -1488,15 +1665,21 @@
       }
     });
 
-    /* ═══════════════ BACKUP ═══════════════ */
-    function checkBackupBanner() { const last = LS.get('__last_backup__', null); if (!last) { document.getElementById('backup-banner').style.display = 'flex'; return } const days = (Date.now() - new Date(last).getTime()) / 86400000; document.getElementById('backup-banner').style.display = days >= 14 ? 'flex' : 'none'; if (days >= 14) document.getElementById('backup-text').textContent = `距离上次备份已${Math.floor(days)}天，建议导出备份` }
-    function exportData() { const users = getUsers(), data = { version: 5, exported: new Date().toISOString(), users, userData: {} }; users.forEach(u => { data.userData[u.id] = { sleep: LS.get(u.id + '_sleep', []), body: LS.get(u.id + '_body', []), sop: LS.get(u.id + '_sop', []), goals: LS.get(u.id + '_goals', []) } }); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })); a.download = 'health-backup.json'; a.click(); LS.set('__last_backup__', new Date().toISOString()); checkBackupBanner(); closeModal('io-modal') }
-    function importData() { const file = document.getElementById('import-file').files[0]; if (!file) return alert('请先选择文件'); const r = new FileReader(); r.onload = e => { try { const data = JSON.parse(e.target.result); if (!data.users) return alert('格式不正确'); if (!confirm('导入将覆盖当前所有数据？')) return; saveUsers(data.users); Object.entries(data.userData || {}).forEach(([uid, ud]) => ['sleep', 'body', 'sop', 'goals'].forEach(k => { if (ud[k]) LS.set(uid + '_' + k, ud[k]) })); LS.set('__last_backup__', new Date().toISOString()); alert('恢复成功！页面将刷新。'); location.reload() } catch (e) { alert('读取失败') } }; r.readAsText(file) }
+    /* ═══════════════ BACKUP BANNER ═══════════════ */
+    function checkBackupBanner() {
+      const last = LS.get('__last_backup__', null);
+      if (!last) { document.getElementById('backup-banner').style.display = 'flex'; return }
+      const days = (Date.now() - new Date(last).getTime()) / 86400000;
+      document.getElementById('backup-banner').style.display = days >= 14 ? 'flex' : 'none';
+      if (days >= 14) document.getElementById('backup-text').textContent = `距离上次备份已${Math.floor(days)}天，建议导出备份`;
+    }
 
     /* ═══════════════ PAGE ROUTING ═══════════════ */
     const pageRenderers = { sleep: renderSleep, analysis: renderAnalysis, body: renderBody, sop: renderSOP, goals: renderGoals }
     document.querySelectorAll('nav button[data-page]').forEach(btn => btn.addEventListener('click', () => { document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); document.querySelectorAll('nav button[data-page]').forEach(b => b.classList.remove('active')); document.getElementById('page-' + btn.dataset.page).classList.add('active'); btn.classList.add('active'); pageRenderers[btn.dataset.page]?.() }))
-    document.getElementById('user-badge').addEventListener('click', switchUser); document.getElementById('manage-link').addEventListener('click', () => openModal('manage-modal')); document.getElementById('add-user-btn').addEventListener('click', () => { closeModal('manage-modal'); openModal('add-user-modal') }); document.getElementById('new-user-save-btn').addEventListener('click', addNewUser); document.getElementById('io-btn').addEventListener('click', () => openModal('io-modal'))
+    document.getElementById('user-badge').addEventListener('click', switchUser); document.getElementById('manage-link').addEventListener('click', () => openModal('manage-modal')); document.getElementById('add-user-btn').addEventListener('click', () => { closeModal('manage-modal'); openModal('add-user-modal') }); document.getElementById('new-user-save-btn').addEventListener('click', addNewUser); document.getElementById('io-btn').addEventListener('click', () => openModal('io-modal'));
+    document.getElementById('export-btn').addEventListener('click', () => exportData());
+    document.getElementById('import-btn').addEventListener('click', () => importData());
 
     /* ═══════════════ SLEEP MODAL ═══════════════ */
     let sleepFilterDays = 7, editingSleepId = null, phaseFilterDays = 30, sleepListFilterDays = 7
@@ -1557,7 +1740,8 @@
       let logs = DB.get('sleep');
       if (editingSleepId) { const idx = logs.findIndex(l => String(l.id) === String(editingSleepId)); if (idx >= 0) logs[idx] = entry; else logs.push(entry) } else logs.push(entry);
       logs.sort((a, b) => a.date !== b.date ? b.date.localeCompare(a.date) : b.sleep.localeCompare(a.sleep));
-      DB.set('sleep', logs); closeModal('sleep-modal'); renderSleep()
+      DB.set('sleep', logs); closeModal('sleep-modal');
+      dbSync('sleep').then(() => renderSleep());
     })
 
     document.getElementById('sleep-filter-bar').addEventListener('click', e => { const btn = e.target.closest('.filter-btn'); if (!btn) return; document.querySelectorAll('#sleep-filter-bar .filter-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); sleepFilterDays = +btn.dataset.filter; renderSleep() })
@@ -1595,7 +1779,7 @@
           return `<div class="sleep-seg"><div style="flex:1"><div class="sleep-seg-time">${l.sleep} → ${l.wake} <span class="sleep-seg-dur">${fmtH(l.duration)}</span></div>${badges.length ? `<div class="sleep-seg-badges">${badges.join(' · ')}</div>` : ''}${preTags}${l.note ? `<div class="sleep-seg-badges">${l.note}</div>` : ''}</div><button class="edit-btn" data-sid="${l.id}">编辑</button><button class="del-btn" data-sdel="${l.id}">✕</button></div>`
         }).join('')}</div>`
       }).join('');
-      listEl.querySelectorAll('[data-sdel]').forEach(btn => btn.addEventListener('click', () => { if (!confirm('删除这段记录？')) return; DB.set('sleep', DB.get('sleep').filter(l => String(l.id) !== btn.dataset.sdel)); renderSleep() }));
+      listEl.querySelectorAll('[data-sdel]').forEach(btn => btn.addEventListener('click', () => { if (!confirm('删除这段记录？')) return; DB.set('sleep', DB.get('sleep').filter(l => String(l.id) !== btn.dataset.sdel)); dbSync('sleep').then(() => renderSleep()); }));
       listEl.querySelectorAll('[data-sid]').forEach(btn => btn.addEventListener('click', () => {
         const l = getMigratedSleep().find(x => String(x.id) === btn.dataset.sid); if (!l) return;
         editingSleepId = l.id;
@@ -1610,11 +1794,11 @@
         document.getElementById('sl-note').value = l.note || '';
         document.querySelectorAll('#sp-chips .chip').forEach(c => c.classList.toggle('selected', c.dataset.val === l.sp));
         document.querySelectorAll('#period-chips .chip').forEach(c => c.classList.toggle('selected', c.dataset.val === l.period));
-        
+
         const preConds = l.preConditions || [];
         const predefined = ['高温', '低温', '长时间用眼', '久坐', '压力大', '焦虑', '疲劳', '精神兴奋', '咖啡因', '酒精', '剧烈运动', '脱水', '生病/感冒', '晚餐过晚'];
         const otherVals = preConds.filter(x => !predefined.includes(x));
-        
+
         document.querySelectorAll('#pre-cond-chips .chip').forEach(c => {
           if (c.dataset.val === '其他') {
             c.classList.toggle('selected', otherVals.length > 0);
@@ -1622,7 +1806,7 @@
             c.classList.toggle('selected', preConds.includes(c.dataset.val));
           }
         });
-        
+
         const otherInput = document.getElementById('sl-pre-cond-other');
         if (otherInput) {
           if (otherVals.length > 0) {
@@ -1633,7 +1817,7 @@
             otherInput.style.display = 'none';
           }
         }
-        
+
         openModal('sleep-modal')
       }))
     }
@@ -1936,7 +2120,7 @@
     let bodyFilter = 'all', reliefTargetDate = null, bodyDateFilterDays = 7
     document.getElementById('body-date-filter-bar').addEventListener('click', e => { const btn = e.target.closest('.filter-btn'); if (!btn) return; document.querySelectorAll('#body-date-filter-bar .filter-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); bodyDateFilterDays = +btn.dataset.filter; renderBody() })
     document.getElementById('body-filter-bar').addEventListener('click', e => { const btn = e.target.closest('.filter-btn'); if (!btn) return; document.querySelectorAll('#body-filter-bar .filter-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); bodyFilter = btn.dataset.filter; renderBody() })
-    document.getElementById('relief-save-btn').addEventListener('click', () => { if (!reliefTargetDate) return; const logs = DB.get('body'), entry = { date: reliefTargetDate, reliefs: getSelected('relief-chips'), degree: +document.getElementById('relief-degree').value, note: document.getElementById('relief-note').value.trim() }, idx = logs.findIndex(l => l.date === reliefTargetDate); if (idx >= 0) logs[idx] = entry; else logs.push(entry); logs.sort((a, b) => b.date.localeCompare(a.date)); DB.set('body', logs); closeModal('relief-modal'); renderBody() })
+    document.getElementById('relief-save-btn').addEventListener('click', () => { if (!reliefTargetDate) return; const logs = DB.get('body'), entry = { id: reliefTargetDate, date: reliefTargetDate, reliefs: getSelected('relief-chips'), degree: +document.getElementById('relief-degree').value, note: document.getElementById('relief-note').value.trim() }, idx = logs.findIndex(l => l.date === reliefTargetDate); if (idx >= 0) logs[idx] = entry; else logs.push(entry); logs.sort((a, b) => b.date.localeCompare(a.date)); DB.set('body', logs); closeModal('relief-modal'); dbSync('body').then(() => renderBody()) })
     function openReliefModal(date, segs) { reliefTargetDate = date; document.getElementById('relief-modal-title').textContent = `缓解记录 · ${fmtDate(date)}`; const syms = []; segs.forEach(l => { if (l.head > 1) syms.push(`醒后头痛 ${l.head}/5`); if (l.neck > 1) syms.push(`醒后肩颈 ${l.neck}/5`); if (l.preHead > 1) syms.push(`睡前头痛 ${l.preHead}/5`); if (l.preNeck > 1) syms.push(`睡前肩颈 ${l.preNeck}/5`); if (l.sp === '有') syms.push('睡眠瘫痪'); if (l.period && l.period !== '非经期') syms.push(l.period) }); document.getElementById('relief-symptom-summary').textContent = syms.length ? '当日症状：' + syms.join('、') : '当日无明显症状'; document.querySelectorAll('#relief-chips .chip').forEach(c => c.classList.remove('selected')); document.getElementById('relief-degree').value = 50; document.getElementById('relief-degree-val').textContent = '50%'; document.getElementById('relief-note').value = ''; const existing = DB.get('body').find(b => b.date === date); if (existing) { document.querySelectorAll('#relief-chips .chip').forEach(c => { if (existing.reliefs?.includes(c.textContent.trim())) c.classList.add('selected') }); document.getElementById('relief-degree').value = existing.degree ?? 50; document.getElementById('relief-degree-val').textContent = (existing.degree ?? 50) + '%'; document.getElementById('relief-note').value = existing.note || '' } openModal('relief-modal') }
 
     function renderBody() {
@@ -1972,12 +2156,12 @@
     /* ═══════════════ SOP ═══════════════ */
     let editingSopId = null
     document.getElementById('sop-add-btn').addEventListener('click', () => { editingSopId = null; document.getElementById('sop-modal-title').textContent = '添加 SOP';['sop-name', 'sop-cat', 'sop-steps-input', 'sop-note'].forEach(id => document.getElementById(id).value = ''); openModal('sop-modal') })
-    document.getElementById('sop-save-btn').addEventListener('click', () => { const name = document.getElementById('sop-name').value.trim(), steps = document.getElementById('sop-steps-input').value.trim(); if (!name || !steps) return alert('请填写名称和步骤'); const sops = DB.get('sop'), entry = { name, cat: document.getElementById('sop-cat').value.trim(), steps: steps.split('\n').filter(s => s.trim()), note: document.getElementById('sop-note').value.trim() }; if (editingSopId) { const idx = sops.findIndex(s => String(s.id) === String(editingSopId)); if (idx >= 0) sops[idx] = { ...sops[idx], ...entry } } else sops.push({ id: Date.now(), created: today(), ...entry }); DB.set('sop', sops); closeModal('sop-modal'); renderSOP() })
+    document.getElementById('sop-save-btn').addEventListener('click', () => { const name = document.getElementById('sop-name').value.trim(), steps = document.getElementById('sop-steps-input').value.trim(); if (!name || !steps) return alert('请填写名称和步骤'); const sops = DB.get('sop'), entry = { name, cat: document.getElementById('sop-cat').value.trim(), steps: steps.split('\n').filter(s => s.trim()), note: document.getElementById('sop-note').value.trim() }; if (editingSopId) { const idx = sops.findIndex(s => String(s.id) === String(editingSopId)); if (idx >= 0) sops[idx] = { ...sops[idx], ...entry } } else sops.push({ id: Date.now(), created: today(), ...entry }); DB.set('sop', sops); closeModal('sop-modal'); dbSync('sop').then(() => renderSOP()) })
     document.getElementById('sop-export-btn').addEventListener('click', () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(DB.get('sop'), null, 2)], { type: 'application/json' })); a.download = 'sop-export.json'; a.click() })
     function renderSOP() {
       const sops = DB.get('sop'), el = document.getElementById('sop-list');
       if (!sops.length) { el.innerHTML = '<div class="empty">还没有 SOP</div>'; return }
-      
+
       // Group sops by category
       const groups = {};
       sops.forEach(s => {
@@ -1985,14 +2169,14 @@
         if (!groups[cat]) groups[cat] = [];
         groups[cat].push(s);
       });
-      
+
       // Sort categories: put '未分类' at the end, others alphabetically sorted
       const groupNames = Object.keys(groups).sort((a, b) => {
         if (a === '未分类') return 1;
         if (b === '未分类') return -1;
         return a.localeCompare(b);
       });
-      
+
       el.innerHTML = groupNames.map((cat, groupIdx) => {
         const catSops = groups[cat];
         const sopsHtml = catSops.map(s => `
@@ -2011,12 +2195,12 @@
             </div>
           </div>
         `).join('');
-        
+
         return `
           <div class="sop-group">
-            <div class="sop-group-header" data-sop-group-toggle="${groupIdx}">
-              <span>${cat}</span>
-              <span class="sop-group-count" style="font-size:11px;color:var(--muted);font-weight:normal;">${catSops.length}个 SOP ▾</span>
+            <div class="sop-group-header" data-sop-group-toggle="${groupIdx}" id="sop-group-header-${groupIdx}">
+              <span>${cat} <span style="font-size:11px;color:var(--muted);font-weight:normal;margin-left:4px">${catSops.length}个</span></span>
+              <span class="sop-group-arrow">▼</span>
             </div>
             <div class="sop-group-content" id="sop-group-content-${groupIdx}">
               ${sopsHtml}
@@ -2024,32 +2208,29 @@
           </div>
         `;
       }).join('');
-      
+
       // Wire up toggle for groups
       el.querySelectorAll('[data-sop-group-toggle]').forEach(e => {
         e.addEventListener('click', () => {
           const idx = e.dataset.sopGroupToggle;
           const content = document.getElementById('sop-group-content-' + idx);
           if (content) {
-            content.classList.toggle('open');
-            const countSpan = e.querySelector('.sop-group-count');
-            const isOpen = content.classList.contains('open');
-            const countText = countSpan.textContent.split('个')[0];
-            countSpan.textContent = `${countText}个 SOP ${isOpen ? '▴' : '▾'}`;
+            const isOpen = content.classList.toggle('open');
+            e.classList.toggle('open', isOpen);
           }
         });
       });
 
       // Wire up toggle for individual sops
       el.querySelectorAll('[data-sop-toggle]').forEach(e => e.addEventListener('click', () => document.getElementById('sop-body-' + e.dataset.sopToggle)?.classList.toggle('open')));
-      
+
       // Wire up delete
       el.querySelectorAll('[data-sop-del]').forEach(btn => btn.addEventListener('click', () => {
         if (!confirm('删除？')) return;
         DB.set('sop', DB.get('sop').filter(s => String(s.id) !== btn.dataset.sopDel));
-        renderSOP();
+        dbSync('sop').then(() => renderSOP());
       }));
-      
+
       // Wire up edit
       el.querySelectorAll('[data-sop-edit]').forEach(btn => btn.addEventListener('click', () => {
         const s = DB.get('sop').find(x => String(x.id) === btn.dataset.sopEdit);
@@ -2071,8 +2252,67 @@
     function renderGoalTagChips(sel = []) { const c = document.getElementById('goal-tag-chips'); c.innerHTML = ''; getAllTags().forEach(t => { const s = document.createElement('span'); s.className = 'chip' + (sel.includes(t) ? ' selected' : ''); s.textContent = t; s.addEventListener('click', () => s.classList.toggle('selected')); c.appendChild(s) }) }
     document.getElementById('goal-tag-input').addEventListener('keydown', e => { if (e.key !== 'Enter') return; e.preventDefault(); const v = e.target.value.trim(); if (!v) return; saveTag(v); renderGoalTagChips([...getSelected('goal-tag-chips'), v]); e.target.value = '' })
     document.getElementById('goal-add-btn').addEventListener('click', () => { editingGoalId = null; document.getElementById('goal-modal-title').textContent = '添加目标 / 待办'; document.getElementById('goal-text').value = ''; document.getElementById('goal-date').value = ''; document.querySelectorAll('#goal-type-chips .chip').forEach((c, i) => c.classList.toggle('selected', i === 0)); renderGoalTagChips(); openModal('goal-modal') })
-    document.getElementById('goal-save-btn').addEventListener('click', () => { const text = document.getElementById('goal-text').value.trim(); if (!text) return alert('请填写内容'); const tags = getSelected('goal-tag-chips'); tags.forEach(saveTag); const goals = DB.get('goals'), entry = { text, tags, type: getSingleVal('goal-type-chips') || 'long', dueDate: document.getElementById('goal-date').value || null }; if (editingGoalId) { const idx = goals.findIndex(g => String(g.id) === String(editingGoalId)); if (idx >= 0) goals[idx] = { ...goals[idx], ...entry } } else goals.push({ id: Date.now(), done: false, created: today(), ...entry }); DB.set('goals', goals); closeModal('goal-modal'); renderGoals() })
-    function renderGoals() { const goals = DB.get('goals'), renderList = (list, elId) => { const el = document.getElementById(elId); el.innerHTML = ''; if (!list.length) { el.innerHTML = '<div class="empty">暂无</div>'; return } list.forEach(g => { const div = document.createElement('div'); div.className = 'goal-item'; div.innerHTML = `<div class="g-check${g.done ? ' done' : ''}"></div><div style="flex:1"><div class="g-text${g.done ? ' done' : ''}">${g.text}</div><div class="g-meta">${g.dueDate ? `<span>${fmtDate(g.dueDate)}</span>` : ''} ${g.tags?.map(t => `<span class="g-tag">${t}</span>`).join('') || ''}</div></div><button class="edit-btn">编辑</button><button class="del-btn">✕</button>`; div.querySelector('.g-check').addEventListener('click', () => { const gs = DB.get('goals'), gx = gs.find(x => String(x.id) === String(g.id)); if (gx) gx.done = !gx.done; DB.set('goals', gs); renderGoals() }); div.querySelector('.edit-btn').addEventListener('click', () => { editingGoalId = g.id; document.getElementById('goal-modal-title').textContent = '编辑'; document.getElementById('goal-text').value = g.text; document.getElementById('goal-date').value = g.dueDate || ''; document.querySelectorAll('#goal-type-chips .chip').forEach(c => c.classList.toggle('selected', c.dataset.val === g.type)); renderGoalTagChips(g.tags || []); openModal('goal-modal') }); div.querySelector('.del-btn').addEventListener('click', () => { DB.set('goals', DB.get('goals').filter(x => String(x.id) !== String(g.id))); renderGoals() }); el.appendChild(div) }) }; renderList(goals.filter(g => g.type === 'long'), 'goal-long'); renderList(goals.filter(g => g.type === 'todo'), 'goal-todo') }
+    document.getElementById('goal-save-btn').addEventListener('click', () => { const text = document.getElementById('goal-text').value.trim(); if (!text) return alert('请填写内容'); const tags = getSelected('goal-tag-chips'); tags.forEach(saveTag); const goals = DB.get('goals'), entry = { text, tags, type: getSingleVal('goal-type-chips') || 'long', dueDate: document.getElementById('goal-date').value || null }; if (editingGoalId) { const idx = goals.findIndex(g => String(g.id) === String(editingGoalId)); if (idx >= 0) goals[idx] = { ...goals[idx], ...entry } } else goals.push({ id: Date.now(), done: false, created: today(), ...entry }); DB.set('goals', goals); closeModal('goal-modal'); dbSync('goals').then(() => renderGoals()) })
+    function renderGoals() { const goals = DB.get('goals'), renderList = (list, elId) => { const el = document.getElementById(elId); el.innerHTML = ''; if (!list.length) { el.innerHTML = '<div class="empty">暂无</div>'; return } list.forEach(g => { const div = document.createElement('div'); div.className = 'goal-item'; div.innerHTML = `<div class="g-check${g.done ? ' done' : ''}"></div><div style="flex:1"><div class="g-text${g.done ? ' done' : ''}">${g.text}</div><div class="g-meta">${g.dueDate ? `<span>${fmtDate(g.dueDate)}</span>` : ''} ${g.tags?.map(t => `<span class="g-tag">${t}</span>`).join('') || ''}</div></div><button class="edit-btn">编辑</button><button class="del-btn">✕</button>`; div.querySelector('.g-check').addEventListener('click', () => { const gs = DB.get('goals'), gx = gs.find(x => String(x.id) === String(g.id)); if (gx) gx.done = !gx.done; DB.set('goals', gs); dbSync('goals').then(() => renderGoals()) }); div.querySelector('.edit-btn').addEventListener('click', () => { editingGoalId = g.id; document.getElementById('goal-modal-title').textContent = '编辑'; document.getElementById('goal-text').value = g.text; document.getElementById('goal-date').value = g.dueDate || ''; document.querySelectorAll('#goal-type-chips .chip').forEach(c => c.classList.toggle('selected', c.dataset.val === g.type)); renderGoalTagChips(g.tags || []); openModal('goal-modal') }); div.querySelector('.del-btn').addEventListener('click', () => { DB.set('goals', DB.get('goals').filter(x => String(x.id) !== String(g.id))); dbSync('goals').then(() => renderGoals()) }); el.appendChild(div) }) }; renderList(goals.filter(g => g.type === 'long'), 'goal-long'); renderList(goals.filter(g => g.type === 'todo'), 'goal-todo') }
+
+    /* ═══════════════ BACKUP (Firestore export/import) ═══════════════ */
+    async function exportData() {
+      showLoading('导出中…');
+      try {
+        const users = getUsers();
+        const data = { version: 6, exported: new Date().toISOString(), users, userData: {} };
+        for (const u of users) {
+          // Temporarily read from Firestore directly for export
+          const savedId = CU?.id;
+          CU = u; // point to this user
+          const [sleep, body, sop, goals] = await Promise.all([
+            dbGet('sleep'), dbGet('body'), dbGet('sop'), dbGet('goals')
+          ]);
+          data.userData[u.id] = { sleep, body, sop, goals };
+          CU = users.find(x => x.id === savedId) || CU;
+        }
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+        a.download = 'health-backup.json'; a.click();
+        LS.set('__last_backup__', new Date().toISOString());
+        checkBackupBanner(); closeModal('io-modal');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function importData() {
+      const file = document.getElementById('import-file').files[0];
+      if (!file) return alert('请先选择文件');
+      const r = new FileReader();
+      r.onload = async e => {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (!data.users) return alert('格式不正确');
+          if (!confirm('导入将覆盖当前所有数据？')) return;
+          showLoading('导入中…');
+          saveUsers(data.users);
+          const savedCU = CU;
+          for (const [uid, ud] of Object.entries(data.userData || {})) {
+            const u = data.users.find(x => x.id === uid);
+            if (!u) continue;
+            CU = u;
+            for (const k of ['sleep', 'body', 'sop', 'goals']) {
+              if (ud[k]) await dbSetAll(k, ud[k]);
+            }
+          }
+          CU = savedCU;
+          LS.set('__last_backup__', new Date().toISOString());
+          hideLoading();
+          alert('恢复成功！页面将刷新。');
+          location.reload();
+        } catch (err) {
+          hideLoading();
+          alert('读取失败：' + err.message);
+        }
+      };
+      r.readAsText(file);
+    }
 
     /* ═══════════════ INIT ═══════════════ */
     (function () { const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent); if (isIOS && !window.navigator.standalone && !localStorage.getItem('__ios_tip__')) { document.getElementById('ios-tip').style.display = 'block'; localStorage.setItem('__ios_tip__', '1') } })()
