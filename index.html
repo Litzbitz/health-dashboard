@@ -1682,6 +1682,7 @@
     <div class="modal">
       <div class="modal-title" id="family-modal-title">家庭</div>
       <div id="family-current" style="margin-bottom:14px"></div>
+      <div id="family-modal-members" style="margin-bottom:14px"></div>
       <hr style="border:none;border-top:1px solid var(--border);margin-bottom:14px">
       <div id="family-create-section">
         <label>创建新家庭</label><input type="text" id="family-name-input" placeholder="例：My Family">
@@ -1719,7 +1720,8 @@
     } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
     import {
       getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
-      signOut, onAuthStateChanged, updateProfile
+      signOut, onAuthStateChanged, updateProfile,
+      updatePassword, reauthenticateWithCredential, EmailAuthProvider
     } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
     const firebaseConfig = {
@@ -2020,6 +2022,28 @@
       await setDoc(doc(db, 'users', authUid), { name: CU.name, avatar: CU.avatar, familyId: CU.familyId || null, createdAt: CU.createdAt || new Date().toISOString() }, { merge: true });
     }
 
+    async function changePassword() {
+      const msgEl = document.getElementById('set-pass-msg');
+      const curInput = document.getElementById('set-cur-pass');
+      const newInput = document.getElementById('set-new-pass');
+      const showMsg = (text, isError) => { msgEl.textContent = text; msgEl.style.color = isError ? 'var(--danger, #e5484d)' : 'var(--accent)'; msgEl.style.display = 'block'; };
+      const cur = curInput.value;
+      const next = newInput.value;
+      if (!cur || !next) return showMsg('请填写当前密码和新密码', true);
+      if (next.length < 6) return showMsg('新密码至少 6 位', true);
+      const user = auth.currentUser;
+      if (!user || !user.email) return showMsg('无法获取当前登录信息', true);
+      try {
+        const cred = EmailAuthProvider.credential(user.email, cur);
+        await reauthenticateWithCredential(user, cred);
+        await updatePassword(user, next);
+        curInput.value = ''; newInput.value = '';
+        showMsg('密码已更新', false);
+      } catch (e) {
+        showMsg(authErrMsg(e.code), true);
+      }
+    }
+
     async function createFamily() {
       if (CU?.familyId) return alert('您已加入一个家庭，请先退出后再创建新家庭。');
       const name = document.getElementById('family-name-input').value.trim();
@@ -2111,6 +2135,14 @@
         <div class="flex" style="margin-top:8px">
           <button class="btn" id="set-save-btn">保存资料</button>
           <button class="btn btn-ghost" id="set-logout-btn">退出登录</button>
+        </div>
+        <hr style="border:none;border-top:1px dashed var(--border);margin:14px 0">
+        <label>更改密码</label>
+        <input type="password" id="set-cur-pass" placeholder="当前密码" autocomplete="current-password">
+        <input type="password" id="set-new-pass" placeholder="新密码（至少 6 位）" autocomplete="new-password" style="margin-top:6px">
+        <div id="set-pass-msg" style="font-size:12px;margin-top:4px;display:none"></div>
+        <div class="flex" style="margin-top:8px">
+          <button class="btn btn-ghost" id="set-change-pass-btn">更新密码</button>
         </div>`;
       acc.querySelectorAll('#set-avatar-chips .chip').forEach(c => c.addEventListener('click', () => {
         acc.querySelectorAll('#set-avatar-chips .chip').forEach(x => x.classList.remove('selected'));
@@ -2125,6 +2157,7 @@
         alert('已保存');
       });
       acc.querySelector('#set-logout-btn').addEventListener('click', signOutUser);
+      acc.querySelector('#set-change-pass-btn').addEventListener('click', changePassword);
 
       if (CU.familyId) {
         fam.innerHTML = `<div class="mgr-info">家庭名称：<strong>${CU.familyName || CU.familyId}</strong> <button class="btn btn-sm btn-ghost" id="set-rename-family-btn" style="margin-left:4px">改名</button></div>
@@ -2169,9 +2202,10 @@
       } catch (e) { console.error('ensureMemberNamesLoaded', e); return false; }
     }
 
-    async function loadMembers(fid) {
-      const el = document.getElementById('member-list');
+    async function loadMembers(fid, elId = 'member-list') {
+      const el = document.getElementById(elId);
       if (!el) return;
+      el.innerHTML = '<div class="mgr-info" style="color:var(--muted)">加载成员中…</div>';
       try {
         const snap = await getDoc(doc(db, 'families', fid));
         if (!snap.exists()) { el.innerHTML = ''; return; }
@@ -2238,10 +2272,12 @@
     function openModal(id) { document.getElementById(id)?.classList.add('open'); if (id === 'manage-modal') renderManageList(); if (id === 'family-modal') renderFamilyModal() }
     function renderFamilyModal() {
       const el = document.getElementById('family-current');
+      const membersEl = document.getElementById('family-modal-members');
       const createSection = document.getElementById('family-create-section');
       const joinSection = document.getElementById('family-join-section');
       if (!CU?.familyId) {
         el.innerHTML = '<div class="mgr-info">尚未加入任何家庭。可在下方创建或加入。</div>';
+        if (membersEl) membersEl.innerHTML = '';
         if (createSection) createSection.style.display = '';
         if (joinSection) joinSection.style.display = '';
         return;
@@ -2257,6 +2293,13 @@
       leaveBtn.className = 'btn btn-sm btn-warn'; leaveBtn.textContent = '退出家庭'; leaveBtn.style.marginTop = '6px';
       leaveBtn.addEventListener('click', leaveFamily);
       el.appendChild(leaveBtn);
+      if (membersEl) {
+        membersEl.innerHTML = '<label style="margin-bottom:4px">家庭成员</label>';
+        const list = document.createElement('div');
+        list.id = 'family-modal-member-list';
+        membersEl.appendChild(list);
+        loadMembers(CU.familyId, 'family-modal-member-list');
+      }
     }
     function closeModal(id) { document.getElementById(id)?.classList.remove('open') }
     document.addEventListener('click', e => { if (e.target.classList.contains('modal-overlay')) closeModal(e.target.id); const cl = e.target.dataset.close; if (cl) closeModal(cl) })
@@ -2329,8 +2372,12 @@
     }));
     document.querySelectorAll('.top-tab').forEach(btn => btn.addEventListener('click', () => switchTop(btn.dataset.top)));
 
-    // user-badge → switch account (legacy alias kept)
-    document.getElementById('user-badge').addEventListener('click', switchUser);
+    // user-badge → open personal profile/settings page
+    document.getElementById('user-badge').addEventListener('click', () => {
+      currentScope = 'personal';
+      applyScope();
+      navigateTo('settings');
+    });
     // manage/add-user legacy handlers (elements may not exist after refactor — guard with ?.)
     document.getElementById('manage-link')?.addEventListener('click', () => openModal('manage-modal'));
     document.getElementById('add-user-btn')?.addEventListener('click', () => { closeModal('manage-modal'); openModal('add-user-modal') });
@@ -2883,9 +2930,8 @@
       const sops = DB.get('sop'), el = document.getElementById('sop-list');
       if (!sops.length) { el.innerHTML = '<div class="empty">还没有 SOP</div>'; return }
 
-      // 多个家庭成员的 SOP 合并显示时，标注每一条的贡献者
-      const contributorIds = new Set(sops.map(s => s.execBy).filter(Boolean));
-      const showContributor = contributorIds.size > 1;
+      // 标注每一条 SOP 的贡献者（家庭共享空间内的昵称）
+      const showContributor = !!CU?.familyId;
       if (CU?.familyId) {
         ensureMemberNamesLoaded(CU.familyId).then(changed => { if (changed) renderSOP(); });
       }
@@ -2911,7 +2957,7 @@
           <div class="sop-item">
             <div style="display:flex;align-items:flex-start">
               <div style="flex:1;cursor:pointer" data-sop-toggle="${s.id}">
-                <div style="font-weight:500">${s.name}${showContributor ? ` <span style="font-weight:400;font-size:11px;color:var(--muted)">（贡献者：${getMemberName(s.execBy)}）</span>` : ''}</div>
+                <div style="font-weight:500">${s.name}${showContributor && s.execBy ? ` <span style="font-weight:400;font-size:11px;color:var(--muted)">（贡献者：${getMemberName(s.execBy)}）</span>` : ''}</div>
                 <div style="font-size:11px;color:var(--muted);margin-top:2px">${s.steps.length}步 ▾</div>
               </div>
               <button class="edit-btn" data-sop-edit="${s.id}">编辑</button>
@@ -2983,7 +3029,7 @@
     document.getElementById('goal-tag-input').addEventListener('keydown', e => { if (e.key !== 'Enter') return; e.preventDefault(); const v = e.target.value.trim(); if (!v) return; saveTag(v); renderGoalTagChips([...getSelected('goal-tag-chips'), v]); e.target.value = '' })
     document.getElementById('goal-add-btn').addEventListener('click', () => { editingGoalId = null; document.getElementById('goal-modal-title').textContent = '添加目标 / 待办'; document.getElementById('goal-text').value = ''; document.getElementById('goal-date').value = ''; document.querySelectorAll('#goal-type-chips .chip').forEach((c, i) => c.classList.toggle('selected', i === 0)); renderGoalTagChips(); openModal('goal-modal') })
     document.getElementById('goal-save-btn').addEventListener('click', () => { const text = document.getElementById('goal-text').value.trim(); if (!text) return alert('请填写内容'); const tags = getSelected('goal-tag-chips'); tags.forEach(saveTag); const goals = DB.get('goals'), entry = { text, tags, type: getSingleVal('goal-type-chips') || 'long', dueDate: document.getElementById('goal-date').value || null, createdBy: authUid }; if (editingGoalId) { const idx = goals.findIndex(g => String(g.id) === String(editingGoalId)); if (idx >= 0) goals[idx] = { ...goals[idx], ...entry } } else goals.push({ id: Date.now(), done: false, created: today(), ...entry }); DB.set('goals', goals); closeModal('goal-modal'); dbSync('goals').then(() => renderGoals()) })
-    function renderGoals() { const goals = DB.get('goals'); const showContributor = new Set(goals.map(g => g.createdBy).filter(Boolean)).size > 1; if (CU?.familyId) { ensureMemberNamesLoaded(CU.familyId).then(changed => { if (changed) renderGoals() }) } const renderList = (list, elId) => { const el = document.getElementById(elId); el.innerHTML = ''; if (!list.length) { el.innerHTML = '<div class="empty">暂无</div>'; return } list.forEach(g => { const div = document.createElement('div'); div.className = 'goal-item'; div.innerHTML = `<div class="g-check${g.done ? ' done' : ''}"></div><div style="flex:1"><div class="g-text${g.done ? ' done' : ''}">${g.text}</div><div class="g-meta">${g.dueDate ? `<span>${fmtDate(g.dueDate)}</span>` : ''} ${g.tags?.map(t => `<span class="g-tag">${t}</span>`).join('') || ''}${showContributor ? `<span class="g-tag">贡献者：${getMemberName(g.createdBy)}</span>` : ''}</div></div><button class="edit-btn">编辑</button><button class="del-btn">✕</button>`; div.querySelector('.g-check').addEventListener('click', () => { const gs = DB.get('goals'), gx = gs.find(x => String(x.id) === String(g.id)); if (gx) gx.done = !gx.done; DB.set('goals', gs); dbSync('goals').then(() => renderGoals()) }); div.querySelector('.edit-btn').addEventListener('click', () => { editingGoalId = g.id; document.getElementById('goal-modal-title').textContent = '编辑'; document.getElementById('goal-text').value = g.text; document.getElementById('goal-date').value = g.dueDate || ''; document.querySelectorAll('#goal-type-chips .chip').forEach(c => c.classList.toggle('selected', c.dataset.val === g.type)); renderGoalTagChips(g.tags || []); openModal('goal-modal') }); div.querySelector('.del-btn').addEventListener('click', async () => { const id = String(g.id); DB.set('goals', DB.get('goals').filter(x => String(x.id) !== id)); await dbDel('goals', id); renderGoals() }); el.appendChild(div) }) }; renderList(goals.filter(g => g.type === 'long'), 'goal-long'); renderList(goals.filter(g => g.type === 'todo'), 'goal-todo') }
+    function renderGoals() { const goals = DB.get('goals'); const showContributor = !!CU?.familyId; if (CU?.familyId) { ensureMemberNamesLoaded(CU.familyId).then(changed => { if (changed) renderGoals() }) } const renderList = (list, elId) => { const el = document.getElementById(elId); el.innerHTML = ''; if (!list.length) { el.innerHTML = '<div class="empty">暂无</div>'; return } list.forEach(g => { const div = document.createElement('div'); div.className = 'goal-item'; div.innerHTML = `<div class="g-check${g.done ? ' done' : ''}"></div><div style="flex:1"><div class="g-text${g.done ? ' done' : ''}">${g.text}</div><div class="g-meta">${g.dueDate ? `<span>${fmtDate(g.dueDate)}</span>` : ''} ${g.tags?.map(t => `<span class="g-tag">${t}</span>`).join('') || ''}${showContributor && g.createdBy ? `<span class="g-tag">贡献者：${getMemberName(g.createdBy)}</span>` : ''}</div></div><button class="edit-btn">编辑</button><button class="del-btn">✕</button>`; div.querySelector('.g-check').addEventListener('click', () => { const gs = DB.get('goals'), gx = gs.find(x => String(x.id) === String(g.id)); if (gx) gx.done = !gx.done; DB.set('goals', gs); dbSync('goals').then(() => renderGoals()) }); div.querySelector('.edit-btn').addEventListener('click', () => { editingGoalId = g.id; document.getElementById('goal-modal-title').textContent = '编辑'; document.getElementById('goal-text').value = g.text; document.getElementById('goal-date').value = g.dueDate || ''; document.querySelectorAll('#goal-type-chips .chip').forEach(c => c.classList.toggle('selected', c.dataset.val === g.type)); renderGoalTagChips(g.tags || []); openModal('goal-modal') }); div.querySelector('.del-btn').addEventListener('click', async () => { const id = String(g.id); DB.set('goals', DB.get('goals').filter(x => String(x.id) !== id)); await dbDel('goals', id); renderGoals() }); el.appendChild(div) }) }; renderList(goals.filter(g => g.type === 'long'), 'goal-long'); renderList(goals.filter(g => g.type === 'todo'), 'goal-todo') }
 
     /* ═══════════════ DIARY / REFLECTION ═══════════════ */
     let editingDiaryId = null, diaryFilterDays = 30;
