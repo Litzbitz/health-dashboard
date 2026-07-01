@@ -58,7 +58,7 @@
     .nav-logo {
       font-size: 16px;
       font-weight: 800;
-      margin-right: auto;
+      margin-right: 10px;
       letter-spacing: -.03em;
       color: var(--accent)
     }
@@ -107,6 +107,92 @@
       max-width: 900px;
       margin: 0 auto;
       padding: 68px 14px 48px
+    }
+
+    .top-tab {
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all .15s;
+      font-family: inherit
+    }
+
+    .top-tab.active {
+      color: #fff;
+      background: var(--accent);
+      border-color: var(--accent)
+    }
+
+    .nav-action {
+      border: none;
+      background: none;
+      color: var(--muted);
+      font-size: 14px;
+      padding: 4px 9px;
+      cursor: pointer;
+      border-radius: 6px;
+      font-family: inherit
+    }
+
+    .nav-action:hover {
+      background: var(--surface2)
+    }
+
+    .mgr-info {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.7;
+      margin-bottom: 6px
+    }
+
+    .mgr-info strong {
+      color: var(--text);
+      font-weight: 600
+    }
+
+    .member-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px
+    }
+
+    .member-row:last-child {
+      border-bottom: none
+    }
+
+    .member-role {
+      margin-left: auto;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--surface2);
+      color: var(--muted)
+    }
+
+    .member-role.admin {
+      background: rgba(0, 122, 255, 0.1);
+      color: var(--accent)
+    }
+
+    .legacy-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px
+    }
+
+    .legacy-row:last-child {
+      border-bottom: none
     }
 
     .page {
@@ -1226,22 +1312,37 @@
         style="background:rgba(255,255,255,.2);border:none;color:#fff;padding:4px 12px;border-radius:6px;cursor:pointer;font-family:inherit">知道了</button>
     </div>
   </div>
-  <div id="user-screen">
-    <h1>Axis</h1>
-    <p>选择你的账户继续</p>
-    <div class="user-grid" id="user-grid"></div>
-    <button class="manage-link" id="manage-link">管理用户</button>
+  <div id="auth-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px;background:var(--bg)">
+    <h1 style="font-size:28px;font-weight:800;letter-spacing:-.04em;color:var(--accent);margin-bottom:6px">Axis</h1>
+    <p style="font-size:14px;color:var(--muted);margin-bottom:24px">登录或注册个人账户</p>
+    <div class="card" style="width:100%;max-width:340px">
+      <label>邮箱</label><input type="email" id="auth-email" placeholder="you@example.com" autocomplete="email">
+      <label>密码</label><input type="password" id="auth-pass" placeholder="至少 6 位" autocomplete="new-password">
+      <div id="auth-error" style="color:var(--bad);font-size:12px;margin-bottom:8px;display:none"></div>
+      <div class="flex" style="margin-top:8px">
+        <button class="btn" id="auth-signin-btn">登录</button>
+        <button class="btn btn-ghost" id="auth-signup-btn">注册</button>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-top:14px;line-height:1.6">登录后可选择 <b>创建家庭</b> 或 <b>通过家庭 ID 加入</b>。</p>
+    </div>
   </div>
+  <!-- 保留旧的用户选择屏（向后兼容，默认隐藏） -->
+  <div id="user-screen" style="display:none"></div>
   <div id="app" style="display:none">
     <nav>
       <span class="nav-logo">Axis</span>
-      <button class="active" data-page="sleep">睡眠</button>
-      <button data-page="analysis">分析</button>
-      <button data-page="body">身体</button>
-      <button data-page="sop">SOP</button>
-      <button data-page="goals">目标</button>
-      <button data-page="diary">Reflection</button>
-      <button id="io-btn"
+      <button class="top-tab active" data-top="personal">Personal</button>
+      <button class="top-tab" data-top="family">Family</button>
+      <span style="flex:1"></span>
+      <button class="nav-page active" data-page="sleep" data-scope="personal">睡眠</button>
+      <button class="nav-page" data-page="analysis" data-scope="personal">分析</button>
+      <button class="nav-page" data-page="body" data-scope="personal">身体</button>
+      <button class="nav-page" data-page="diary" data-scope="personal">Reflection</button>
+      <button class="nav-page" data-page="settings" data-scope="personal">设置</button>
+      <button class="nav-page" data-page="sop" data-scope="family">SOP</button>
+      <button class="nav-page" data-page="goals" data-scope="family">目标</button>
+      <button id="family-btn" class="nav-action" title="家庭设置">👨‍👩‍👧</button>
+      <button id="io-btn" class="nav-action"
         style="border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:12px;padding:4px 9px;background:none;cursor:pointer;font-family:inherit">备份</button>
       <button class="user-badge" id="user-badge"><span id="nav-avatar">👤</span><span id="nav-name">—</span></button>
     </nav>
@@ -1378,6 +1479,22 @@
           <div id="diary-list" style="padding:8px 0">
             <div class="empty">还没有日记</div>
           </div>
+        </div>
+      </div>
+      <div class="page" id="page-settings">
+        <div class="section-header"><span class="section-title">个人设置</span></div>
+        <div class="card">
+          <div class="card-title">账户</div>
+          <div id="settings-account"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">家庭</div>
+          <div id="settings-family"></div>
+        </div>
+        <div class="card" id="migration-card" style="border-style:dashed;border-color:rgba(175,82,222,.2);background:rgba(175,82,222,.04)">
+          <div class="card-title" style="color:var(--purple)">旧数据迁移</div>
+          <p style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:10px">从本地旧账户（localStorage / user_default）迁移数据到当前家庭与个人空间。</p>
+          <div id="migration-list"></div>
         </div>
       </div>
     </main>
@@ -1545,6 +1662,23 @@
           data-close="add-user-modal">取消</button></div>
     </div>
   </div>
+  <div class="modal-overlay" id="family-modal">
+    <div class="modal">
+      <div class="modal-title" id="family-modal-title">家庭</div>
+      <div id="family-current" style="margin-bottom:14px"></div>
+      <hr style="border:none;border-top:1px solid var(--border);margin-bottom:14px">
+      <div id="family-create-section">
+        <label>创建新家庭</label><input type="text" id="family-name-input" placeholder="例：My Family">
+        <button class="btn" id="family-create-btn" style="margin-bottom:12px">创建家庭</button>
+      </div>
+      <hr style="border:none;border-top:1px dashed var(--border);margin:6px 0 14px">
+      <div>
+        <label>加入已有家庭（输入家庭 ID）</label><input type="text" id="family-id-input" placeholder="family id">
+        <button class="btn btn-ghost" id="family-join-btn">加入家庭</button>
+      </div>
+      <div class="flex" style="margin-top:14px"><button class="btn btn-ghost" data-close="family-modal">关闭</button></div>
+    </div>
+  </div>
   <div class="modal-overlay" id="io-modal">
     <div class="modal">
       <div class="modal-title">数据备份 & 恢复</div>
@@ -1567,6 +1701,10 @@
       getFirestore, collection, doc, getDocs, getDoc,
       setDoc, deleteDoc, writeBatch, query, orderBy
     } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+    import {
+      getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+      signOut, onAuthStateChanged, updateProfile
+    } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
     const firebaseConfig = {
       apiKey: "AIzaSyCssCfYu1UCq34LpCBPM2UfOhVln95MGtY",
@@ -1579,6 +1717,16 @@
     };
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    /* ═══════════════ DATA MODEL ═══════════════ */
+    // Family scope (shared): families/{familyId}/{coll}
+    // Personal scope (private): users/{uid}/personal/{coll}
+    const FAMILY_COLS = ['sop', 'goals'];
+    const PERSONAL_COLS = ['sleep', 'body', 'diary', 'settings'];
+    function colScope(collName) { return FAMILY_COLS.includes(collName) ? 'family' : 'personal'; }
+    let authUid = null;     // current Firebase Auth uid
+    let currentScope = 'personal';
 
     /* ═══════════════ LOCAL STORAGE (users + ui prefs only) ═══════════════ */
     const LS = {
@@ -1593,13 +1741,28 @@
     function saveUsers(u) { LS.set('__users__', u) }
 
     /* ═══════════════ FIRESTORE DB LAYER ═══════════════ */
-    // users/{userId}/{collName}/{docId}
-    function userCol(collName) {
-      return collection(db, 'users', CU.id, collName);
+    // Family scope:  families/{familyId}/{collName}/{docId}
+    // Personal scope: users/{uid}/personal/{collName}/{docId}
+    function familyId() { return CU ? CU.familyId : null; }
+
+    function scopedCol(collName) {
+      if (colScope(collName) === 'family') {
+        if (!familyId()) throw new Error('no family');
+        return collection(db, 'families', familyId(), collName);
+      }
+      return collection(db, 'users', authUid, 'personal', collName);
     }
-    function userDoc(collName, docId) {
-      return doc(db, 'users', CU.id, collName, String(docId));
+    function scopedDoc(collName, docId) {
+      if (colScope(collName) === 'family') {
+        if (!familyId()) throw new Error('no family');
+        return doc(db, 'families', familyId(), collName, String(docId));
+      }
+      return doc(db, 'users', authUid, 'personal', collName, String(docId));
     }
+
+    // Backward-compat aliases (legacy code called userCol/userDoc)
+    function userCol(collName) { return scopedCol(collName); }
+    function userDoc(collName, docId) { return scopedDoc(collName, docId); }
 
     // Loading state
     let _loadingCount = 0;
@@ -1666,19 +1829,18 @@
 
     /* ═══════════════ COMPAT SHIM: async DB used by all render fns ═══════════════ */
     // Cache layer so sync render functions can work after initial load
-    const _cache = { sleep: [], body: [], sop: [], goals: [], diary: [] };
+    const _cache = { sleep: [], body: [], sop: [], goals: [], diary: [], settings: [] };
 
     async function loadUserData() {
       showLoading('加载数据…');
       try {
-        const [sleep, body, sop, goals, diary] = await Promise.all([
-          dbGet('sleep'), dbGet('body'), dbGet('sop'), dbGet('goals'), dbGet('diary')
-        ]);
-        _cache.sleep = sleep;
-        _cache.body = body;
-        _cache.sop = sop;
-        _cache.goals = goals;
-        _cache.diary = diary;
+        const personal = Promise.all([dbGet('sleep'), dbGet('body'), dbGet('diary'), dbGet('settings')]);
+        const family = familyId()
+          ? Promise.all([dbGet('sop'), dbGet('goals')])
+          : Promise.resolve([[], []]);
+        const [pArr, fArr] = await Promise.all([personal, family]);
+        _cache.sleep = pArr[0]; _cache.body = pArr[1]; _cache.diary = pArr[2]; _cache.settings = pArr[3];
+        _cache.sop = fArr[0]; _cache.goals = fArr[1];
       } finally {
         hideLoading();
       }
@@ -1742,25 +1904,267 @@
     const feelLabels = { 1: '极度疲倦', 2: '仍然困倦', 3: '状态平稳', 4: '比较精神', 5: '精力充沛' }
 
     /* ═══════════════ USER MANAGEMENT ═══════════════ */
-    function initApp() { let u = getUsers(); if (!u.length) { u = [{ id: 'user_default', name: '我', avatar: '🙋' }]; saveUsers(u) } renderUserGrid() }
-    function renderUserGrid() { const users = getUsers(), g = document.getElementById('user-grid'); g.innerHTML = ''; users.forEach(u => { const d = document.createElement('div'); d.className = 'user-card'; d.innerHTML = `<div class="u-avatar">${u.avatar}</div><div class="u-name">${u.name}</div>`; d.addEventListener('click', () => loginUser(u.id)); g.appendChild(d) }); const add = document.createElement('div'); add.className = 'user-card user-add'; add.innerHTML = '<div class="u-avatar">＋</div><div class="u-name">添加用户</div>'; add.addEventListener('click', () => openModal('add-user-modal')); g.appendChild(add) }
-    async function loginUser(id) {
-      const u = getUsers().find(x => x.id === id); if (!u) return;
-      CU = u;
-      document.getElementById('user-screen').style.display = 'none';
-      document.getElementById('app').style.display = 'block';
-      document.getElementById('nav-avatar').textContent = u.avatar;
-      document.getElementById('nav-name').textContent = u.name;
-      checkBackupBanner();
-      await loadUserData();
-      renderSleep();
+    // Legacy localStorage user helpers (kept for backward-compat & migration source)
+    function initApp() { let u = getUsers(); if (!u.length) { u = [{ id: 'user_default', name: '我', avatar: '🙋' }]; saveUsers(u) } }
+    function renderUserGrid() { /* legacy grid disabled under auth flow */ }
+    async function loginUser(id) { /* replaced by auth flow */ }
+    function switchUser() { return signOutUser(); }
+    function renderManageList() { const users = getUsers(), el = document.getElementById('manage-list'); el.innerHTML = ''; if (!users.length) { el.innerHTML = '<div class="empty">无本地旧账户</div>'; return } users.forEach(u => { const row = document.createElement('div'); row.className = 'mgr-row'; row.innerHTML = `<span style="font-size:22px">${u.avatar}</span><span style="flex:1;font-weight:500;padding:0 8px">${u.name}</span>`; const btn = document.createElement('button'); btn.className = 'btn btn-sm' + (users.length > 1 ? ' btn-danger' : ' btn-ghost'); btn.textContent = users.length > 1 ? '删除' : '不可删除'; btn.disabled = users.length <= 1; btn.addEventListener('click', () => { if (users.length <= 1) return alert('至少保留一个用户'); if (!confirm(`删除「${u.name}」及其所有数据？`)) return; saveUsers(getUsers().filter(x => x.id !== u.id)); renderManageList(); renderUserGrid?.() }); row.appendChild(btn); el.appendChild(row) }) }
+    function addNewUser() { const name = document.getElementById('new-name').value.trim(); const avatar = document.querySelector('#avatar-chips .chip.selected')?.textContent || '🙋'; if (!name) return alert('请输入名字'); const users = getUsers(); users.push({ id: 'user_' + Date.now(), name, avatar }); saveUsers(users); document.getElementById('new-name').value = ''; closeModal('add-user-modal'); renderManageList() }
+
+    /* ═══════════════ AUTH FLOW ═══════════════ */
+    function showAuthScreen() {
+      document.getElementById('auth-screen').style.display = 'flex';
+      document.getElementById('app').style.display = 'none';
     }
-    function switchUser() { CU = null; document.getElementById('app').style.display = 'none'; document.getElementById('user-screen').style.display = 'flex'; renderUserGrid() }
-    function renderManageList() { const users = getUsers(), el = document.getElementById('manage-list'); el.innerHTML = ''; users.forEach(u => { const row = document.createElement('div'); row.className = 'mgr-row'; row.innerHTML = `<span style="font-size:22px">${u.avatar}</span><span style="flex:1;font-weight:500;padding:0 8px">${u.name}</span>`; const btn = document.createElement('button'); btn.className = 'btn btn-sm' + (users.length > 1 ? ' btn-danger' : ' btn-ghost'); btn.textContent = users.length > 1 ? '删除' : '不可删除'; btn.disabled = users.length <= 1; btn.addEventListener('click', () => { if (users.length <= 1) return alert('至少保留一个用户'); if (!confirm(`删除「${u.name}」及其所有数据？`)) return; saveUsers(getUsers().filter(x => x.id !== u.id)); if (CU && CU.id === u.id) switchUser(); else { renderManageList(); renderUserGrid() } }); row.appendChild(btn); el.appendChild(row) }) }
-    function addNewUser() { const name = document.getElementById('new-name').value.trim(); const avatar = document.querySelector('#avatar-chips .chip.selected')?.textContent || '🙋'; if (!name) return alert('请输入名字'); const users = getUsers(); users.push({ id: 'user_' + Date.now(), name, avatar }); saveUsers(users); document.getElementById('new-name').value = ''; closeModal('add-user-modal'); renderUserGrid(); renderManageList() }
+    function showApp() {
+      document.getElementById('auth-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      if (CU) {
+        document.getElementById('nav-avatar').textContent = CU.avatar || '🙋';
+        document.getElementById('nav-name').textContent = CU.name || '—';
+      }
+    }
+    async function authSignIn() {
+      const email = document.getElementById('auth-email').value.trim();
+      const pass = document.getElementById('auth-pass').value;
+      const errEl = document.getElementById('auth-error');
+      errEl.style.display = 'none';
+      if (!email || !pass) { errEl.textContent = '请填写邮箱和密码'; errEl.style.display = 'block'; return; }
+      try { await signInWithEmailAndPassword(auth, email, pass); }
+      catch (e) { errEl.textContent = authErrMsg(e.code); errEl.style.display = 'block'; }
+    }
+    async function authSignUp() {
+      const email = document.getElementById('auth-email').value.trim();
+      const pass = document.getElementById('auth-pass').value;
+      const errEl = document.getElementById('auth-error');
+      errEl.style.display = 'none';
+      if (!email || pass.length < 6) { errEl.textContent = '邮箱必填，密码至少 6 位'; errEl.style.display = 'block'; return; }
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, email, pass);
+        const name = email.split('@')[0];
+        await updateProfile(cred.user, { displayName: name });
+      } catch (e) { errEl.textContent = authErrMsg(e.code); errEl.style.display = 'block'; }
+    }
+    function authErrMsg(code) {
+      const m = {
+        'auth/invalid-email': '邮箱格式不正确',
+        'auth/user-not-found': '用户不存在',
+        'auth/wrong-password': '密码错误',
+        'auth/invalid-credential': '邮箱或密码错误',
+        'auth/email-already-in-use': '该邮箱已注册',
+        'auth/weak-password': '密码强度不足（至少 6 位）',
+        'auth/too-many-requests': '尝试过于频繁，稍后再试',
+      };
+      return m[code] || ('登录失败：' + code);
+    }
+    async function signOutUser() {
+      try { await signOut(auth); } catch (e) { console.error(e); }
+    }
+
+    /* ═══════════════ PROFILE / FAMILY ═══════════════ */
+    async function ensureProfile(fbUser) {
+      const ref = doc(db, 'users', fbUser.uid);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        const data = snap.data();
+        return { id: fbUser.uid, name: data.name || fbUser.displayName || (fbUser.email || '').split('@')[0], avatar: data.avatar || '🙋', familyId: data.familyId || null, role: data.role || 'admin', createdAt: data.createdAt || null };
+      }
+      const profile = { name: fbUser.displayName || (fbUser.email || '').split('@')[0], avatar: '🙋', familyId: null, createdAt: new Date().toISOString() };
+      await setDoc(ref, profile);
+      return { id: fbUser.uid, ...profile, role: 'admin' };
+    }
+
+    async function saveProfile() {
+      if (!authUid || !CU) return;
+      await setDoc(doc(db, 'users', authUid), { name: CU.name, avatar: CU.avatar, familyId: CU.familyId || null, createdAt: CU.createdAt || new Date().toISOString() }, { merge: true });
+    }
+
+    async function createFamily() {
+      const name = document.getElementById('family-name-input').value.trim();
+      if (!name) return alert('请输入家庭名称');
+      const fid = 'fam_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      const famRef = doc(db, 'families', fid);
+      await setDoc(famRef, { name, owner: authUid, members: { [authUid]: 'admin' }, createdAt: new Date().toISOString() });
+      CU.familyId = fid; CU.role = 'admin';
+      await saveProfile();
+      closeModal('family-modal');
+      await afterFamilyReady();
+    }
+
+    async function joinFamily() {
+      const fid = document.getElementById('family-id-input').value.trim();
+      if (!fid) return alert('请输入家庭 ID');
+      const famRef = doc(db, 'families', fid);
+      const snap = await getDoc(famRef);
+      if (!snap.exists()) return alert('找不到该家庭');
+      const data = snap.data();
+      const members = data.members || {};
+      if (!(authUid in members)) {
+        members[authUid] = 'member';
+        await setDoc(famRef, { members }, { merge: true });
+      }
+      CU.familyId = fid; CU.role = members[authUid] || 'member';
+      await saveProfile();
+      closeModal('family-modal');
+      await afterFamilyReady();
+    }
+
+    async function leaveFamily() {
+      if (!CU?.familyId) return;
+      if (!confirm('退出当前家庭？共享数据（SOP / 目标）将不再可见。')) return;
+      const famRef = doc(db, 'families', CU.familyId);
+      const snap = await getDoc(famRef);
+      if (snap.exists()) {
+        const members = { ...(snap.data().members || {}) };
+        delete members[authUid];
+        await setDoc(famRef, { members }, { merge: true });
+      }
+      CU.familyId = null; CU.role = null;
+      await saveProfile();
+      closeModal('family-modal');
+      await afterFamilyReady();
+    }
+
+    async function afterFamilyReady() {
+      // family changed -> reload all data & reset Family tab
+      await loadUserData();
+      // refresh family display
+      renderSettings?.();
+      // refresh nav
+      currentScope = 'personal';
+      applyScope();
+      navigateTo('sleep');
+    }
+
+    /* ═══════════════ PERSONAL SETTINGS PAGE ═══════════════ */
+    function renderSettings() {
+      const acc = document.getElementById('settings-account');
+      const fam = document.getElementById('settings-family');
+      if (!CU) return;
+      acc.innerHTML = `
+        <div class="mgr-info">已登录：<strong>${CU.name}</strong> &nbsp;${CU.email ? '(' + CU.email + ')' : ''}</div>
+        <label>显示名称</label><input type="text" id="set-name" value="${CU.name || ''}">
+        <label>头像</label>
+        <div class="chips" id="set-avatar-chips" style="font-size:20px">
+          ${['🙋','👩','👨','👧','👦','👵','👴','🐱','🐶'].map(a => `<span class="chip${CU.avatar === a ? ' selected' : ''}">${a}</span>`).join('')}
+        </div>
+        <div class="flex" style="margin-top:8px">
+          <button class="btn" id="set-save-btn">保存资料</button>
+          <button class="btn btn-ghost" id="set-logout-btn">退出登录</button>
+        </div>`;
+      acc.querySelectorAll('#set-avatar-chips .chip').forEach(c => c.addEventListener('click', () => {
+        acc.querySelectorAll('#set-avatar-chips .chip').forEach(x => x.classList.remove('selected'));
+        c.classList.add('selected');
+      }));
+      acc.querySelector('#set-save-btn').addEventListener('click', async () => {
+        CU.name = document.getElementById('set-name').value.trim() || CU.name;
+        CU.avatar = acc.querySelector('#set-avatar-chips .chip.selected')?.textContent || '🙋';
+        await saveProfile();
+        document.getElementById('nav-avatar').textContent = CU.avatar;
+        document.getElementById('nav-name').textContent = CU.name;
+        alert('已保存');
+      });
+      acc.querySelector('#set-logout-btn').addEventListener('click', signOutUser);
+
+      if (CU.familyId) {
+        fam.innerHTML = `<div class="mgr-info">家庭 ID：<strong>${CU.familyId}</strong></div>
+          <div class="mgr-info">你的角色：<span class="member-role${CU.role === 'admin' ? ' admin' : ''}">${CU.role || 'member'}</span></div>
+          <div id="member-list"></div>
+          <div class="flex" style="margin-top:10px"><button class="btn btn-ghost" id="set-open-family-btn">管理家庭</button><button class="btn btn-warn" id="set-leave-family-btn">退出家庭</button></div>`;
+        loadMembers(CU.familyId);
+        fam.querySelector('#set-open-family-btn').addEventListener('click', () => openModal('family-modal'));
+        fam.querySelector('#set-leave-family-btn').addEventListener('click', leaveFamily);
+      } else {
+        fam.innerHTML = `<div class="mgr-info">尚未加入任何家庭。</div><button class="btn" id="set-open-family-btn">创建 / 加入家庭</button>`;
+        fam.querySelector('#set-open-family-btn').addEventListener('click', () => openModal('family-modal'));
+      }
+      renderMigrationList();
+    }
+
+    async function loadMembers(fid) {
+      const el = document.getElementById('member-list');
+      if (!el) return;
+      try {
+        const snap = await getDoc(doc(db, 'families', fid));
+        if (!snap.exists()) { el.innerHTML = ''; return; }
+        const members = snap.data().members || {};
+        // fetch each member's profile name/avatar
+        const rows = await Promise.all(Object.entries(members).map(async ([uid, role]) => {
+          const p = await getDoc(doc(db, 'users', uid));
+          const d = p.exists() ? p.data() : {};
+          return `<div class="member-row"><span style="font-size:18px">${d.avatar || '🙋'}</span><span>${d.name || uid.slice(0, 6)}</span><span class="member-role${role === 'admin' ? ' admin' : ''}">${role}</span></div>`;
+        }));
+        el.innerHTML = rows.join('');
+      } catch (e) { console.error('loadMembers', e); }
+    }
+
+    function renderMigrationList() {
+      const card = document.getElementById('migration-card');
+      const el = document.getElementById('migration-list');
+      if (!card || !el) return;
+      const legacy = getUsers();
+      if (!legacy.length) { card.style.display = 'none'; return; }
+      card.style.display = 'block';
+      el.innerHTML = '';
+      legacy.forEach(u => {
+        const done = LS.get(`__migrated_${u.id}__`, false);
+        const row = document.createElement('div');
+        row.className = 'legacy-row';
+        row.innerHTML = `<span style="font-size:20px">${u.avatar}</span><span style="flex:1;padding:0 8px">${u.name} <span style="font-size:11px;color:var(--muted)">(${u.id})</span></span>`;
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-sm ' + (done ? 'btn-ghost' : 'btn-warn');
+        btn.textContent = done ? '已迁移' : '迁移';
+        if (done) btn.disabled = true;
+        else btn.addEventListener('click', () => migrateLegacyUser(u, btn, row));
+        row.appendChild(btn);
+        el.appendChild(row);
+      });
+    }
+
+    async function migrateLegacyUser(legacyUser, btn, row) {
+      const fid = CU?.familyId;
+      if (!fid) { alert('请先创建或加入家庭后再迁移 SOP / 目标。'); return; }
+      if (!confirm(`将「${legacyUser.name}」的旧数据迁移到当前家庭(SOP/目标)与个人空间(睡眠/身体/Reflection)？`)) return;
+      showLoading('迁移中…');
+      try {
+        const legacyCols = ['sleep', 'body', 'diary', 'sop', 'goals'];
+        for (const col of legacyCols) {
+          const snap = await getDocs(collection(db, 'users', legacyUser.id, col));
+          if (snap.empty) continue;
+          const batch = writeBatch(db);
+          snap.docs.forEach(d => batch.set(scopedDoc(col, d.id), { ...d.data(), _migratedFrom: legacyUser.id }));
+          await batch.commit();
+        }
+        LS.set(`__migrated_${legacyUser.id}__`, true);
+        await loadUserData();
+        btn.disabled = true;
+        btn.classList.remove('btn-warn'); btn.classList.add('btn-ghost');
+        btn.textContent = '已迁移';
+        alert('迁移完成');
+        navigateTo(currentScope === 'family' ? 'sop' : 'sleep');
+      } catch (e) { console.error(e); alert('迁移失败：' + e.message); }
+      finally { hideLoading(); }
+    }
 
     /* ═══════════════ MODAL ═══════════════ */
-    function openModal(id) { document.getElementById(id)?.classList.add('open'); if (id === 'manage-modal') renderManageList() }
+    function openModal(id) { document.getElementById(id)?.classList.add('open'); if (id === 'manage-modal') renderManageList(); if (id === 'family-modal') renderFamilyModal() }
+    function renderFamilyModal() {
+      const el = document.getElementById('family-current');
+      if (!CU?.familyId) { el.innerHTML = '<div class="mgr-info">尚未加入任何家庭。可在下方创建或加入。</div>'; return; }
+      el.innerHTML = `<div class="mgr-info">当前家庭：<strong>${CU.familyId}</strong></div>
+        <div class="mgr-info">你的角色：<span class="member-role${CU.role === 'admin' ? ' admin' : ''}">${CU.role || 'member'}</span></div>`;
+      // append copy-id + leave buttons
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'btn btn-sm btn-ghost'; copyBtn.textContent = '复制家庭 ID';
+      copyBtn.addEventListener('click', () => { navigator.clipboard?.writeText(CU.familyId); alert('已复制：' + CU.familyId); });
+      const leaveBtn = document.createElement('button');
+      leaveBtn.className = 'btn btn-sm btn-warn'; leaveBtn.textContent = '退出家庭'; leaveBtn.style.marginLeft = '6px';
+      leaveBtn.addEventListener('click', leaveFamily);
+      el.appendChild(document.createElement('div')).style.marginTop = '6px';
+      el.lastChild.style.display = 'flex'; el.lastChild.style.gap = '6px';
+      el.lastChild.appendChild(copyBtn); el.lastChild.appendChild(leaveBtn);
+    }
     function closeModal(id) { document.getElementById(id)?.classList.remove('open') }
     document.addEventListener('click', e => { if (e.target.classList.contains('modal-overlay')) closeModal(e.target.id); const cl = e.target.dataset.close; if (cl) closeModal(cl) })
 
@@ -1790,9 +2194,61 @@
     }
 
     /* ═══════════════ PAGE ROUTING ═══════════════ */
-    const pageRenderers = { sleep: renderSleep, analysis: renderAnalysis, body: renderBody, sop: renderSOP, goals: renderGoals, diary: renderDiary }
-    document.querySelectorAll('nav button[data-page]').forEach(btn => btn.addEventListener('click', () => { document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); document.querySelectorAll('nav button[data-page]').forEach(b => b.classList.remove('active')); document.getElementById('page-' + btn.dataset.page).classList.add('active'); btn.classList.add('active'); pageRenderers[btn.dataset.page]?.() }))
-    document.getElementById('user-badge').addEventListener('click', switchUser); document.getElementById('manage-link').addEventListener('click', () => openModal('manage-modal')); document.getElementById('add-user-btn').addEventListener('click', () => { closeModal('manage-modal'); openModal('add-user-modal') }); document.getElementById('new-user-save-btn').addEventListener('click', addNewUser); document.getElementById('io-btn').addEventListener('click', () => openModal('io-modal'));
+    const pageRenderers = { sleep: renderSleep, analysis: renderAnalysis, body: renderBody, sop: renderSOP, goals: renderGoals, diary: renderDiary, settings: renderSettings }
+
+    function applyScope() {
+      document.querySelectorAll('.top-tab').forEach(b => b.classList.toggle('active', b.dataset.top === currentScope));
+      document.querySelectorAll('nav .nav-page').forEach(b => {
+        b.style.display = (b.dataset.scope === currentScope) ? '' : 'none';
+      });
+    }
+    function navigateTo(page) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('nav .nav-page').forEach(b => b.classList.remove('active'));
+      const btn = document.querySelector(`nav .nav-page[data-page="${page}"]`);
+      if (btn) btn.classList.add('active');
+      const pg = document.getElementById('page-' + page);
+      if (pg) pg.classList.add('active');
+      pageRenderers[page]?.();
+    }
+    function switchTop(scope) {
+      if (scope === 'family' && !(CU && CU.familyId)) {
+        alert('请先创建或加入家庭后再使用 Family 共享空间。');
+        openModal('family-modal');
+        return;
+      }
+      currentScope = scope;
+      applyScope();
+      navigateTo(scope === 'family' ? 'sop' : 'sleep');
+    }
+    document.querySelectorAll('nav .nav-page').forEach(btn => btn.addEventListener('click', () => {
+      const page = btn.dataset.page, scope = btn.dataset.scope;
+      if (scope === 'family' && !(CU && CU.familyId)) {
+        alert('请先创建或加入家庭后再使用 Family 共享空间。');
+        openModal('family-modal');
+        return;
+      }
+      if (scope !== currentScope) {
+        currentScope = scope;
+        applyScope();
+      }
+      navigateTo(page);
+    }));
+    document.querySelectorAll('.top-tab').forEach(btn => btn.addEventListener('click', () => switchTop(btn.dataset.top)));
+
+    // user-badge → switch account (legacy alias kept)
+    document.getElementById('user-badge').addEventListener('click', switchUser);
+    // manage/add-user legacy handlers (elements may not exist after refactor — guard with ?.)
+    document.getElementById('manage-link')?.addEventListener('click', () => openModal('manage-modal'));
+    document.getElementById('add-user-btn')?.addEventListener('click', () => { closeModal('manage-modal'); openModal('add-user-modal') });
+    document.getElementById('new-user-save-btn')?.addEventListener('click', addNewUser);
+    document.getElementById('io-btn').addEventListener('click', () => openModal('io-modal'));
+    document.getElementById('family-btn').addEventListener('click', () => openModal('family-modal'));
+    document.getElementById('family-create-btn').addEventListener('click', createFamily);
+    document.getElementById('family-join-btn').addEventListener('click', joinFamily);
+    document.getElementById('auth-signin-btn').addEventListener('click', authSignIn);
+    document.getElementById('auth-signup-btn').addEventListener('click', authSignUp);
+    document.getElementById('auth-pass').addEventListener('keydown', e => { if (e.key === 'Enter') authSignIn(); });
     document.getElementById('export-btn').addEventListener('click', () => exportData());
     document.getElementById('import-btn').addEventListener('click', () => importData());
 
@@ -2330,7 +2786,7 @@
     /* ═══════════════ SOP ═══════════════ */
     let editingSopId = null
     document.getElementById('sop-add-btn').addEventListener('click', () => { editingSopId = null; document.getElementById('sop-modal-title').textContent = '添加 SOP';['sop-name', 'sop-cat', 'sop-steps-input', 'sop-note'].forEach(id => document.getElementById(id).value = ''); openModal('sop-modal') })
-    document.getElementById('sop-save-btn').addEventListener('click', () => { const name = document.getElementById('sop-name').value.trim(), steps = document.getElementById('sop-steps-input').value.trim(); if (!name || !steps) return alert('请填写名称和步骤'); const sops = DB.get('sop'), entry = { name, cat: document.getElementById('sop-cat').value.trim(), steps: steps.split('\n').filter(s => s.trim()), note: document.getElementById('sop-note').value.trim() }; if (editingSopId) { const idx = sops.findIndex(s => String(s.id) === String(editingSopId)); if (idx >= 0) sops[idx] = { ...sops[idx], ...entry } } else sops.push({ id: Date.now(), created: today(), ...entry }); DB.set('sop', sops); closeModal('sop-modal'); dbSync('sop').then(() => renderSOP()) })
+    document.getElementById('sop-save-btn').addEventListener('click', () => { const name = document.getElementById('sop-name').value.trim(), steps = document.getElementById('sop-steps-input').value.trim(); if (!name || !steps) return alert('请填写名称和步骤'); const sops = DB.get('sop'), entry = { name, cat: document.getElementById('sop-cat').value.trim(), steps: steps.split('\n').filter(s => s.trim()), note: document.getElementById('sop-note').value.trim(), execBy: authUid, execAt: new Date().toISOString() }; if (editingSopId) { const idx = sops.findIndex(s => String(s.id) === String(editingSopId)); if (idx >= 0) sops[idx] = { ...sops[idx], ...entry } } else sops.push({ id: Date.now(), created: today(), ...entry }); DB.set('sop', sops); closeModal('sop-modal'); dbSync('sop').then(() => renderSOP()) })
     document.getElementById('sop-export-btn').addEventListener('click', () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(DB.get('sop'), null, 2)], { type: 'application/json' })); a.download = 'sop-export.json'; a.click() })
     function renderSOP() {
       const sops = DB.get('sop'), el = document.getElementById('sop-list');
@@ -2557,27 +3013,43 @@
 
     // 支持的子集合（扩展时在这里加）
     const COLLECTIONS = ['sleep', 'body', 'sop', 'goals', 'diary'];
+    // legacy path helpers (old single-user model: users/{legacyId}/{col})
+    function legacyCol(legacyId, col) { return collection(db, 'users', legacyId, col); }
 
     // 新导出格式 v7：users 以 userId 为 key 的 map
     async function exportData() {
       showLoading('导出中…');
       try {
-        const users = getUsers();
-        const savedCU = CU;
+        const fbUser = auth.currentUser;
         const out = {
-          version: 7,
+          version: 8,
+          model: 'family-personal',
           exportTime: new Date().toISOString(),
+          authUid: fbUser ? fbUser.uid : null,
+          profile: CU ? { id: CU.id, name: CU.name, avatar: CU.avatar, familyId: CU.familyId } : null,
           users: {}
         };
-        for (const u of users) {
-          CU = u;
+        // export personal + family data for current authenticated user
+        if (fbUser && CU) {
+          const colData = {};
+          for (const col of ['sleep', 'body', 'diary', 'settings']) {
+            colData[col] = await dbGet(col); // personal scope
+          }
+          if (CU.familyId) {
+            for (const col of ['sop', 'goals']) colData[col] = await dbGet(col); // family scope
+          }
+          out.users[fbUser.uid] = { _profile: out.profile, ...colData };
+        }
+        // also include any legacy localStorage users' data (backward-compat 灾备)
+        for (const u of getUsers()) {
+          if (out.users[u.id]) continue;
           const colData = {};
           for (const col of COLLECTIONS) {
-            colData[col] = await dbGet(col);
+            try { colData[col] = (await getDocs(legacyCol(u.id, col))).docs.map(d => d.data()); }
+            catch (e) { colData[col] = []; }
           }
           out.users[u.id] = { _profile: { id: u.id, name: u.name, avatar: u.avatar }, ...colData };
         }
-        CU = savedCU;
         const ts = new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', '-');
         const a = document.createElement('a');
         a.href = URL.createObjectURL(new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' }));
@@ -2594,21 +3066,19 @@
     // 将一组 items 以原有 id 批量 upsert 到 Firestore（500条一批）
     async function batchUpsert(collName, items) {
       if (!items || !items.length) return;
-      // 确保每条数据有 id
       const valid = items.filter(x => x && x.id != null);
-      // Firestore batch 最多 500 次操作
       for (let i = 0; i < valid.length; i += 500) {
         const chunk = valid.slice(i, i + 500);
         const batch = writeBatch(db);
-        chunk.forEach(item => batch.set(userDoc(collName, item.id), item, { merge: true }));
+        chunk.forEach(item => batch.set(scopedDoc(collName, item.id), item, { merge: true }));
         await batch.commit();
       }
     }
 
-    // 兼容旧格式（v5/v6 用 users 数组 + userData 对象）和新格式（v7 用 users map）
+    // 兼容旧格式（v5/v6 用 users 数组 + userData 对象）和新格式（v7/v8 用 users map）
     function normalizeBackup(data) {
-      // v7 格式
-      if (data.version === 7 && data.users && !Array.isArray(data.users)) {
+      // v7 / v8 格式
+      if ((data.version === 7 || data.version === 8) && data.users && !Array.isArray(data.users)) {
         const profiles = [];
         const userData = {};
         for (const [uid, uData] of Object.entries(data.users)) {
@@ -2639,6 +3109,8 @@
     async function importData() {
       const file = document.getElementById('import-file').files[0];
       if (!file) return alert('请先选择文件');
+      if (!authUid) return alert('请先登录后再导入数据');
+      if (!CU.familyId) return alert('请先创建或加入家庭后再导入数据（SOP/目标需要家庭空间）');
       const progressEl = document.getElementById('import-progress');
       const r = new FileReader();
       r.onload = async e => {
@@ -2649,23 +3121,13 @@
 
           const { profiles, userData } = normalized;
           const totalUsers = profiles.length;
-          if (!confirm(`将把 ${totalUsers} 个用户的数据写入 Firestore（按 id 覆盖已有记录）。继续？`)) return;
+          if (!confirm(`将把 ${totalUsers} 个旧账户的数据导入到当前账户（睡眠/身体/Reflection→个人，SOP/目标→家庭）。继续？`)) return;
 
           showLoading('导入中…');
           progressEl.style.display = 'block';
-          const savedCU = CU;
-
-          // 合并用户列表（不覆盖已有用户，补充新用户）
-          const existingUsers = getUsers();
-          const mergedUsers = [...existingUsers];
-          for (const p of profiles) {
-            if (!mergedUsers.find(u => u.id === p.id)) mergedUsers.push(p);
-          }
-          saveUsers(mergedUsers);
 
           let usersDone = 0;
           for (const profile of profiles) {
-            CU = profile;
             progressEl.textContent = `正在导入 ${profile.name || profile.id}… (${usersDone + 1}/${totalUsers})`;
             const ud = userData[profile.id] || {};
             for (const col of COLLECTIONS) {
@@ -2675,11 +3137,10 @@
             usersDone++;
           }
 
-          CU = savedCU;
           LS.set('__last_backup__', new Date().toISOString());
           hideLoading();
           progressEl.style.display = 'none';
-          alert(`导入完成！共写入 ${totalUsers} 个用户的数据。页面将刷新。`);
+          alert(`导入完成！共写入 ${totalUsers} 个账户数据到当前账户空间。页面将刷新。`);
           location.reload();
         } catch (err) {
           hideLoading();
@@ -2693,7 +3154,49 @@
 
     /* ═══════════════ INIT ═══════════════ */
     (function () { const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent); if (isIOS && !window.navigator.standalone && !localStorage.getItem('__ios_tip__')) { document.getElementById('ios-tip').style.display = 'block'; localStorage.setItem('__ios_tip__', '1') } })()
-    initApp()
+    initApp(); // ensures legacy __users__ exists as migration source
+
+    /* ═══════════════ AUTH STATE OBSERVER ═══════════════ */
+    onAuthStateChanged(auth, async (fbUser) => {
+      try {
+        if (!fbUser) {
+          // signed out
+          CU = null; authUid = null;
+          showAuthScreen();
+          return;
+        }
+        authUid = fbUser.uid;
+        const profile = await ensureProfile(fbUser);
+        CU = { ...profile, email: fbUser.email };
+        // legacy localStorage users may be a migration source — ensure list exists
+        if (!getUsers().length) saveUsers([{ id: 'user_default', name: '我', avatar: '🙋' }]);
+        if (!CU.familyId) {
+          // family setup required — keep app visible so nav/family-btn works
+          checkBackupBanner();
+          showApp();
+          document.getElementById('nav-avatar').textContent = CU.avatar || '🙋';
+          document.getElementById('nav-name').textContent = CU.name || '—';
+          await loadUserData(); // personal data loads fine without a family
+          currentScope = 'personal';
+          applyScope();
+          navigateTo('sleep');
+          openModal('family-modal');
+          renderFamilyModal();
+          return;
+        }
+        checkBackupBanner();
+        showApp();
+        applyScope();
+        document.getElementById('nav-avatar').textContent = CU.avatar || '🙋';
+        document.getElementById('nav-name').textContent = CU.name || '—';
+        await loadUserData();
+        currentScope = 'personal';
+        navigateTo('sleep');
+      } catch (e) {
+        console.error('auth state error', e);
+        showAuthScreen();
+      }
+    });
   </script>
 </body>
 
