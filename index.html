@@ -49,10 +49,22 @@
       border-bottom: 1px solid var(--border);
       z-index: 100;
       display: flex;
+      flex-direction: column;
+      padding: 0
+    }
+
+    .nav-row {
+      display: flex;
       align-items: center;
+      gap: 2px;
       padding: 0 12px;
-      height: 52px;
-      gap: 2px
+      height: 44px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch
+    }
+
+    .nav-row + .nav-row {
+      border-top: 1px solid var(--border)
     }
 
     .nav-logo {
@@ -106,7 +118,7 @@
     main {
       max-width: 900px;
       margin: 0 auto;
-      padding: 68px 14px 48px
+      padding: 92px 14px 48px
     }
 
     .top-tab {
@@ -1330,21 +1342,25 @@
   <div id="user-screen" style="display:none"></div>
   <div id="app" style="display:none">
     <nav>
-      <span class="nav-logo">Axis</span>
-      <button class="top-tab active" data-top="personal">Personal</button>
-      <button class="top-tab" data-top="family">Family</button>
-      <span style="flex:1"></span>
-      <button class="nav-page active" data-page="sleep" data-scope="personal">睡眠</button>
-      <button class="nav-page" data-page="analysis" data-scope="personal">分析</button>
-      <button class="nav-page" data-page="body" data-scope="personal">身体</button>
-      <button class="nav-page" data-page="diary" data-scope="personal">Reflection</button>
-      <button class="nav-page" data-page="settings" data-scope="personal">设置</button>
-      <button class="nav-page" data-page="sop" data-scope="family">SOP</button>
-      <button class="nav-page" data-page="goals" data-scope="family">目标</button>
-      <button id="family-btn" class="nav-action" title="家庭设置">👨‍👩‍👧</button>
-      <button id="io-btn" class="nav-action"
-        style="border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:12px;padding:4px 9px;background:none;cursor:pointer;font-family:inherit">备份</button>
-      <button class="user-badge" id="user-badge"><span id="nav-avatar">👤</span><span id="nav-name">—</span></button>
+      <div class="nav-row">
+        <span class="nav-logo">Axis</span>
+        <button class="top-tab" data-top="family">Family</button>
+        <button class="top-tab active" data-top="personal">Personal</button>
+        <span style="flex:1"></span>
+        <button id="family-btn" class="nav-action" title="家庭设置">🏠</button>
+        <button id="io-btn" class="nav-action"
+          style="border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:12px;padding:4px 9px;background:none;cursor:pointer;font-family:inherit">备份</button>
+        <button class="user-badge" id="user-badge"><span id="nav-avatar">👤</span><span id="nav-name">—</span></button>
+      </div>
+      <div class="nav-row" id="nav-pages-row">
+        <button class="nav-page active" data-page="sop" data-scope="family">SOP</button>
+        <button class="nav-page" data-page="goals" data-scope="family">Goals</button>
+        <button class="nav-page" data-page="sleep" data-scope="personal">Sleep</button>
+        <button class="nav-page" data-page="analysis" data-scope="personal">Analysis</button>
+        <button class="nav-page" data-page="body" data-scope="personal">Body</button>
+        <button class="nav-page" data-page="diary" data-scope="personal">Reflection</button>
+        <button class="nav-page" data-page="settings" data-scope="personal">Settings</button>
+      </div>
     </nav>
     <main>
       <div id="backup-banner" class="backup-banner" style="display:none">
@@ -1672,7 +1688,7 @@
         <button class="btn" id="family-create-btn" style="margin-bottom:12px">创建家庭</button>
       </div>
       <hr style="border:none;border-top:1px dashed var(--border);margin:6px 0 14px">
-      <div>
+      <div id="family-join-section">
         <label>加入已有家庭（输入家庭 ID）</label><input type="text" id="family-id-input" placeholder="family id">
         <button class="btn btn-ghost" id="family-join-btn">加入家庭</button>
       </div>
@@ -1741,8 +1757,10 @@
     function saveUsers(u) { LS.set('__users__', u) }
 
     /* ═══════════════ FIRESTORE DB LAYER ═══════════════ */
-    // Family scope:  families/{familyId}/{collName}/{docId}
-    // Personal scope: users/{uid}/personal/{collName}/{docId}
+    // Family scope:  families/{familyId}/{collName}/{docId}   (4 segments, even → doc)
+    // Personal scope: users/{uid}/{collName}/{docId}           (4 segments, even → doc)
+    // 注：原设计 users/{uid}/personal/{coll}/{docId} 为 5 段（奇数），Firestore 视为
+    // 集合引用而拒绝写入 doc，故个人数据去掉 personal 中间段，仍归属用户私有。
     function familyId() { return CU ? CU.familyId : null; }
 
     function scopedCol(collName) {
@@ -1750,14 +1768,14 @@
         if (!familyId()) throw new Error('no family');
         return collection(db, 'families', familyId(), collName);
       }
-      return collection(db, 'users', authUid, 'personal', collName);
+      return collection(db, 'users', authUid, collName);
     }
     function scopedDoc(collName, docId) {
       if (colScope(collName) === 'family') {
         if (!familyId()) throw new Error('no family');
         return doc(db, 'families', familyId(), collName, String(docId));
       }
-      return doc(db, 'users', authUid, 'personal', collName, String(docId));
+      return doc(db, 'users', authUid, collName, String(docId));
     }
 
     // Backward-compat aliases (legacy code called userCol/userDoc)
@@ -1966,13 +1984,34 @@
     async function ensureProfile(fbUser) {
       const ref = doc(db, 'users', fbUser.uid);
       const snap = await getDoc(ref);
+      let profile;
       if (snap.exists()) {
         const data = snap.data();
-        return { id: fbUser.uid, name: data.name || fbUser.displayName || (fbUser.email || '').split('@')[0], avatar: data.avatar || '🙋', familyId: data.familyId || null, role: data.role || 'admin', createdAt: data.createdAt || null };
+        profile = { id: fbUser.uid, name: data.name || fbUser.displayName || (fbUser.email || '').split('@')[0], avatar: data.avatar || '🙋', familyId: data.familyId || null, role: data.role || 'admin', createdAt: data.createdAt || null };
+      } else {
+        profile = { id: fbUser.uid, name: fbUser.displayName || (fbUser.email || '').split('@')[0], avatar: '🙋', familyId: null, createdAt: new Date().toISOString(), role: 'admin' };
+        await setDoc(ref, { name: profile.name, avatar: profile.avatar, familyId: null, createdAt: profile.createdAt });
       }
-      const profile = { name: fbUser.displayName || (fbUser.email || '').split('@')[0], avatar: '🙋', familyId: null, createdAt: new Date().toISOString() };
-      await setDoc(ref, profile);
-      return { id: fbUser.uid, ...profile, role: 'admin' };
+      // 同步家庭名称（来自家庭文档，保证多端一致）
+      if (profile.familyId) {
+        try {
+          const fdoc = await getDoc(doc(db, 'families', profile.familyId));
+          if (fdoc.exists()) {
+            const fd = fdoc.data();
+            profile.familyName = fd.name || profile.familyId;
+            profile.role = (fd.members && fd.members[fbUser.uid]) || 'member';
+            if (!(fbUser.uid in (fd.members || {}))) {
+              // 家庭已不存在该成员 → 清除绑定
+              profile.familyId = null; profile.role = null; profile.familyName = null;
+              await setDoc(ref, { familyId: null }, { merge: true });
+            }
+          } else {
+            profile.familyId = null; profile.role = null;
+            await setDoc(ref, { familyId: null }, { merge: true });
+          }
+        } catch (e) { console.warn('load family doc failed', e); }
+      }
+      return profile;
     }
 
     async function saveProfile() {
@@ -1981,18 +2020,20 @@
     }
 
     async function createFamily() {
+      if (CU?.familyId) return alert('您已加入一个家庭，请先退出后再创建新家庭。');
       const name = document.getElementById('family-name-input').value.trim();
       if (!name) return alert('请输入家庭名称');
       const fid = 'fam_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
       const famRef = doc(db, 'families', fid);
       await setDoc(famRef, { name, owner: authUid, members: { [authUid]: 'admin' }, createdAt: new Date().toISOString() });
-      CU.familyId = fid; CU.role = 'admin';
+      CU.familyId = fid; CU.role = 'admin'; CU.familyName = name;
       await saveProfile();
       closeModal('family-modal');
       await afterFamilyReady();
     }
 
     async function joinFamily() {
+      if (CU?.familyId) return alert('您已加入一个家庭，请先退出后再加入其他家庭。');
       const fid = document.getElementById('family-id-input').value.trim();
       if (!fid) return alert('请输入家庭 ID');
       const famRef = doc(db, 'families', fid);
@@ -2004,10 +2045,22 @@
         members[authUid] = 'member';
         await setDoc(famRef, { members }, { merge: true });
       }
-      CU.familyId = fid; CU.role = members[authUid] || 'member';
+      CU.familyId = fid; CU.role = members[authUid] || 'member'; CU.familyName = data.name || fid;
       await saveProfile();
       closeModal('family-modal');
       await afterFamilyReady();
+    }
+
+    async function renameFamily() {
+      if (!CU?.familyId) return;
+      const name = prompt('修改家庭名称：', CU.familyName || '');
+      if (name === null) return;
+      const trimmed = name.trim();
+      if (!trimmed) return alert('名称不能为空');
+      await setDoc(doc(db, 'families', CU.familyId), { name: trimmed }, { merge: true });
+      CU.familyName = trimmed;
+      renderFamilyModal();
+      renderSettings?.();
     }
 
     async function leaveFamily() {
@@ -2027,11 +2080,16 @@
     }
 
     async function afterFamilyReady() {
+      // 同步家庭名称
+      if (CU && CU.familyId) {
+        try {
+          const fdoc = await getDoc(doc(db, 'families', CU.familyId));
+          if (fdoc.exists()) CU.familyName = fdoc.data().name || CU.familyId;
+        } catch (e) { console.warn(e); }
+      }
       // family changed -> reload all data & reset Family tab
       await loadUserData();
-      // refresh family display
       renderSettings?.();
-      // refresh nav
       currentScope = 'personal';
       applyScope();
       navigateTo('sleep');
@@ -2068,13 +2126,16 @@
       acc.querySelector('#set-logout-btn').addEventListener('click', signOutUser);
 
       if (CU.familyId) {
-        fam.innerHTML = `<div class="mgr-info">家庭 ID：<strong>${CU.familyId}</strong></div>
+        fam.innerHTML = `<div class="mgr-info">家庭名称：<strong>${CU.familyName || CU.familyId}</strong> <button class="btn btn-sm btn-ghost" id="set-rename-family-btn" style="margin-left:4px">改名</button></div>
+          <div class="mgr-info">家庭 ID：<span style="font-size:11px;color:var(--muted)">${CU.familyId}</span> <button class="btn btn-sm btn-ghost" id="set-copy-fid-btn">复制</button></div>
           <div class="mgr-info">你的角色：<span class="member-role${CU.role === 'admin' ? ' admin' : ''}">${CU.role || 'member'}</span></div>
           <div id="member-list"></div>
           <div class="flex" style="margin-top:10px"><button class="btn btn-ghost" id="set-open-family-btn">管理家庭</button><button class="btn btn-warn" id="set-leave-family-btn">退出家庭</button></div>`;
         loadMembers(CU.familyId);
         fam.querySelector('#set-open-family-btn').addEventListener('click', () => openModal('family-modal'));
         fam.querySelector('#set-leave-family-btn').addEventListener('click', leaveFamily);
+        fam.querySelector('#set-rename-family-btn').addEventListener('click', renameFamily);
+        fam.querySelector('#set-copy-fid-btn').addEventListener('click', () => { navigator.clipboard?.writeText(CU.familyId); alert('已复制：' + CU.familyId); });
       } else {
         fam.innerHTML = `<div class="mgr-info">尚未加入任何家庭。</div><button class="btn" id="set-open-family-btn">创建 / 加入家庭</button>`;
         fam.querySelector('#set-open-family-btn').addEventListener('click', () => openModal('family-modal'));
@@ -2151,19 +2212,25 @@
     function openModal(id) { document.getElementById(id)?.classList.add('open'); if (id === 'manage-modal') renderManageList(); if (id === 'family-modal') renderFamilyModal() }
     function renderFamilyModal() {
       const el = document.getElementById('family-current');
-      if (!CU?.familyId) { el.innerHTML = '<div class="mgr-info">尚未加入任何家庭。可在下方创建或加入。</div>'; return; }
-      el.innerHTML = `<div class="mgr-info">当前家庭：<strong>${CU.familyId}</strong></div>
+      const createSection = document.getElementById('family-create-section');
+      const joinSection = document.getElementById('family-join-section');
+      if (!CU?.familyId) {
+        el.innerHTML = '<div class="mgr-info">尚未加入任何家庭。可在下方创建或加入。</div>';
+        if (createSection) createSection.style.display = '';
+        if (joinSection) joinSection.style.display = '';
+        return;
+      }
+      if (createSection) createSection.style.display = 'none';
+      if (joinSection) joinSection.style.display = 'none';
+      el.innerHTML = `<div class="mgr-info">当前家庭：<strong>${CU.familyName || CU.familyId}</strong> <button class="btn btn-sm btn-ghost" id="fam-rename-btn" style="margin-left:4px">改名</button></div>
+        <div class="mgr-info">家庭 ID：<span style="font-size:11px;color:var(--muted)">${CU.familyId}</span> <button class="btn btn-sm btn-ghost" id="fam-copy-btn">复制</button></div>
         <div class="mgr-info">你的角色：<span class="member-role${CU.role === 'admin' ? ' admin' : ''}">${CU.role || 'member'}</span></div>`;
-      // append copy-id + leave buttons
-      const copyBtn = document.createElement('button');
-      copyBtn.className = 'btn btn-sm btn-ghost'; copyBtn.textContent = '复制家庭 ID';
-      copyBtn.addEventListener('click', () => { navigator.clipboard?.writeText(CU.familyId); alert('已复制：' + CU.familyId); });
+      el.querySelector('#fam-rename-btn').addEventListener('click', renameFamily);
+      el.querySelector('#fam-copy-btn').addEventListener('click', () => { navigator.clipboard?.writeText(CU.familyId); alert('已复制：' + CU.familyId); });
       const leaveBtn = document.createElement('button');
-      leaveBtn.className = 'btn btn-sm btn-warn'; leaveBtn.textContent = '退出家庭'; leaveBtn.style.marginLeft = '6px';
+      leaveBtn.className = 'btn btn-sm btn-warn'; leaveBtn.textContent = '退出家庭'; leaveBtn.style.marginTop = '6px';
       leaveBtn.addEventListener('click', leaveFamily);
-      el.appendChild(document.createElement('div')).style.marginTop = '6px';
-      el.lastChild.style.display = 'flex'; el.lastChild.style.gap = '6px';
-      el.lastChild.appendChild(copyBtn); el.lastChild.appendChild(leaveBtn);
+      el.appendChild(leaveBtn);
     }
     function closeModal(id) { document.getElementById(id)?.classList.remove('open') }
     document.addEventListener('click', e => { if (e.target.classList.contains('modal-overlay')) closeModal(e.target.id); const cl = e.target.dataset.close; if (cl) closeModal(cl) })
@@ -2243,7 +2310,13 @@
     document.getElementById('add-user-btn')?.addEventListener('click', () => { closeModal('manage-modal'); openModal('add-user-modal') });
     document.getElementById('new-user-save-btn')?.addEventListener('click', addNewUser);
     document.getElementById('io-btn').addEventListener('click', () => openModal('io-modal'));
-    document.getElementById('family-btn').addEventListener('click', () => openModal('family-modal'));
+    document.getElementById('family-btn').addEventListener('click', async () => {
+      if (!CU || !CU.familyId) {
+        if (confirm('您还没有加入家庭，是否要创建或加入家庭？')) openModal('family-modal');
+        return;
+      }
+      openModal('family-modal');
+    });
     document.getElementById('family-create-btn').addEventListener('click', createFamily);
     document.getElementById('family-join-btn').addEventListener('click', joinFamily);
     document.getElementById('auth-signin-btn').addEventListener('click', authSignIn);
@@ -3077,31 +3150,47 @@
 
     // 兼容旧格式（v5/v6 用 users 数组 + userData 对象）和新格式（v7/v8 用 users map）
     function normalizeBackup(data) {
-      // v7 / v8 格式
-      if ((data.version === 7 || data.version === 8) && data.users && !Array.isArray(data.users)) {
-        const profiles = [];
-        const userData = {};
+      const profiles = [];
+      const userData = {};
+      const pushCols = (uid, uData) => {
+        userData[uid] = {};
+        for (const col of COLLECTIONS) {
+          userData[uid][col] = Array.isArray(uData[col]) ? uData[col]
+            : Array.isArray(uData?.userData?.[col]) ? uData.userData[col]
+            : (Array.isArray(uData?.pain) && col === 'body' ? uData.pain : []);
+        }
+      };
+      // v7 / v8 / 任意新格式：users 是 map
+      if (data.users && typeof data.users === 'object' && !Array.isArray(data.users)) {
         for (const [uid, uData] of Object.entries(data.users)) {
           const profile = uData._profile || { id: uid, name: uid, avatar: '🙋' };
           profiles.push(profile);
-          userData[uid] = {};
-          for (const col of COLLECTIONS) {
-            userData[uid][col] = uData[col] || [];
-          }
+          pushCols(uid, uData);
         }
         return { profiles, userData };
       }
       // 旧格式 v5/v6：users 是数组，userData 是 { userId: { sleep, body, ... } }
       if (Array.isArray(data.users)) {
-        const userData = {};
         for (const u of data.users) {
           userData[u.id] = {};
           for (const col of COLLECTIONS) {
-            // 旧格式 body 可能叫 body，pain 叫 pain
-            userData[u.id][col] = (data.userData?.[u.id]?.[col]) || [];
+            userData[u.id][col] = (data.userData?.[u.id]?.[col])
+              || (col === 'body' ? (data.userData?.[u.id]?.pain || []) : [])
+              || [];
           }
+          profiles.push(u);
         }
-        return { profiles: data.users, userData };
+        return { profiles, userData };
+      }
+      // 旧版单用户导出：顶层直接是 { sleep: [...], body: [...], ... }
+      let direct = 0;
+      for (const col of COLLECTIONS) if (Array.isArray(data[col])) direct++;
+      if (direct > 0) {
+        const uid = 'legacy_single';
+        userData[uid] = {};
+        for (const col of COLLECTIONS) userData[uid][col] = Array.isArray(data[col]) ? data[col] : (col === 'body' && Array.isArray(data.pain) ? data.pain : []);
+        profiles.push({ id: uid, name: data._profile?.name || 'Legacy', avatar: '🙋' });
+        return { profiles, userData };
       }
       return null;
     }
@@ -3110,7 +3199,6 @@
       const file = document.getElementById('import-file').files[0];
       if (!file) return alert('请先选择文件');
       if (!authUid) return alert('请先登录后再导入数据');
-      if (!CU.familyId) return alert('请先创建或加入家庭后再导入数据（SOP/目标需要家庭空间）');
       const progressEl = document.getElementById('import-progress');
       const r = new FileReader();
       r.onload = async e => {
@@ -3121,18 +3209,25 @@
 
           const { profiles, userData } = normalized;
           const totalUsers = profiles.length;
-          if (!confirm(`将把 ${totalUsers} 个旧账户的数据导入到当前账户（睡眠/身体/Reflection→个人，SOP/目标→家庭）。继续？`)) return;
+          const hasFamilyData = profiles.some(p => (userData[p.id]?.sop?.length || userData[p.id]?.goals?.length));
+          if (hasFamilyData && !CU.familyId) {
+            if (!confirm('检测到 SOP / 目标数据，但你尚未加入家庭。这些数据将跳过，仅导入个人数据（睡眠/身体/Reflection）。继续？')) return;
+          } else if (!confirm(`将把 ${totalUsers} 个账户的数据导入到当前账户（睡眠/身体/Reflection→个人，SOP/目标→家庭）。继续？`)) return;
 
           showLoading('导入中…');
           progressEl.style.display = 'block';
 
-          let usersDone = 0;
+          let usersDone = 0, importedCount = 0;
           for (const profile of profiles) {
             progressEl.textContent = `正在导入 ${profile.name || profile.id}… (${usersDone + 1}/${totalUsers})`;
             const ud = userData[profile.id] || {};
             for (const col of COLLECTIONS) {
-              const items = ud[col] || [];
-              if (items.length) await batchUpsert(col, items);
+              const items = (ud[col] || []).filter(x => x && x.id != null);
+              if (!items.length) continue;
+              // 个人数据直接导入；家庭数据需 family
+              if (colScope(col) === 'family' && !CU.familyId) continue;
+              await batchUpsert(col, items);
+              importedCount += items.length;
             }
             usersDone++;
           }
@@ -3140,7 +3235,7 @@
           LS.set('__last_backup__', new Date().toISOString());
           hideLoading();
           progressEl.style.display = 'none';
-          alert(`导入完成！共写入 ${totalUsers} 个账户数据到当前账户空间。页面将刷新。`);
+          alert(`导入完成！共写入 ${importedCount} 条记录。页面将刷新。`);
           location.reload();
         } catch (err) {
           hideLoading();
