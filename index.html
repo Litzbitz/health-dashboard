@@ -1906,6 +1906,7 @@
     function fmtDate(d) { const x = new Date(d + 'T00:00:00'); return x.getFullYear() + '/' + (x.getMonth() + 1) + '/' + x.getDate() }
     function fmtDateShort(d) { const x = new Date(d + 'T00:00:00'); return (x.getMonth() + 1) + '/' + x.getDate() }
     function timeToMin(t) { const [h, m] = String(t || '00:00').split(':').map(Number); return h * 60 + m }
+    function dateToDayNum(d) { return Math.floor(new Date(d + 'T00:00:00Z').getTime() / 86400000) }
     function minToClock(min) { const m = ((Math.round(min) % 1440) + 1440) % 1440; const h = Math.floor(m / 60), mm = m % 60; return String(h).padStart(2, '0') + ':' + String(mm).padStart(2, '0') }
     function timeToH(t) { return timeToMin(t) / 60 }
     function calcDur(s, w) { let d = timeToMin(w) - timeToMin(s); if (d < 0) d += 1440; return d / 60 }
@@ -2143,6 +2144,31 @@
       renderMigrationList();
     }
 
+    // uid -> 显示名称 缓存，用于在合并后的家庭 SOP / 目标条目上标注贡献者
+    let memberNameCache = {};
+    function getMemberName(uid) {
+      if (!uid) return '';
+      if (CU && uid === (CU.id || authUid)) return CU.name || '我';
+      return memberNameCache[uid] || (typeof uid === 'string' ? uid.slice(0, 6) : uid);
+    }
+    // 拉取当前家庭所有成员的显示名称并写入缓存；返回是否有新名称被加载（用于触发一次重渲染）
+    async function ensureMemberNamesLoaded(fid) {
+      if (!fid) return false;
+      try {
+        const snap = await getDoc(doc(db, 'families', fid));
+        if (!snap.exists()) return false;
+        const members = snap.data().members || {};
+        const uids = Object.keys(members).filter(uid => !(uid in memberNameCache));
+        if (!uids.length) return false;
+        await Promise.all(uids.map(async uid => {
+          if (CU && uid === (CU.id || authUid)) { memberNameCache[uid] = CU.name || '我'; return; }
+          const p = await getDoc(doc(db, 'users', uid));
+          memberNameCache[uid] = p.exists() ? (p.data().name || uid.slice(0, 6)) : uid.slice(0, 6);
+        }));
+        return true;
+      } catch (e) { console.error('ensureMemberNamesLoaded', e); return false; }
+    }
+
     async function loadMembers(fid) {
       const el = document.getElementById('member-list');
       if (!el) return;
@@ -2369,7 +2395,7 @@
 
       // 重叠检测：找出与新段时间有交叉的现有记录
       const allLogs = DB.get('sleep');
-      const overlaps = findOverlappingSegs(sleep, wake, allLogs, editingSleepId);
+      const overlaps = findOverlappingSegs(date, sleep, wake, allLogs, editingSleepId);
       if (overlaps.length > 0) {
         const overlapDesc = overlaps.map(l => `${l.sleep}→${l.wake}（${fmtDate(l.date)}）`).join('、');
         const proceed = confirm(`⚠️ 时间段重叠\n\n新记录 ${sleep}→${wake} 与以下记录有重叠：\n${overlapDesc}\n\n确定要继续保存吗？`);
@@ -2516,16 +2542,13 @@
     function sleepRating(hours) { if (hours >= 9) return { label: '偏长', cls: 'metric-warn' }; if (hours >= 7) return { label: '充足', cls: 'metric-good' }; if (hours >= 6) return { label: '略不足', cls: 'metric-warn' }; if (hours >= 4) return { label: '不足', cls: 'metric-bad' }; return { label: '严重不足', cls: 'metric-bad' } }
 
     /* ═══════════════ SLEEP INTERVAL UTILS ═══════════════ */
-    // 把一段睡眠记录转为绝对分钟区间，统一到同一坐标轴
-    // 规则：入睡时间 < 正午(720) 视为凌晨，加 1440 偏移，确保跨日段能正确比较
+    // 把一段睡眠记录转为绝对分钟区间（以记录的真实日期为基准锚定坐标轴），
+    // 这样不同日期但时钟时间相同的记录不会被误判为重叠
     function segToInterval(l) {
-      let s = timeToMin(l.sleep), e = timeToMin(l.wake);
-      // 跨日（e <= s）：e 加 1440
+      const base = dateToDayNum(l.date) * 1440;
+      let s = base + timeToMin(l.sleep), e = base + timeToMin(l.wake);
+      // 跨日（e <= s，即入睡后到次日凌晨才醒）：e 加 1440
       if (e <= s) e += 1440;
-      // 如果入睡在凌晨（< 12:00），说明是前一天深夜延续，s 加 1440 对齐
-      // 判断依据：s < 720 且 当前这天 wakeDate 比 date 晚一天（即真正跨日段）
-      // 更简单的启发：同一 wakeDate 分组内，若 s < 720，偏移到 s+1440
-      if (s < 720) { s += 1440; e += 1440; }
       return [s, e];
     }
 
@@ -2545,13 +2568,8 @@
     }
 
     // 检测新段是否与现有段重叠，返回重叠的段列表
-    function findOverlappingSegs(newSleep, newWake, existingSegs, excludeId = null) {
-      const [ns, ne] = (() => {
-        let s = timeToMin(newSleep), e = timeToMin(newWake);
-        if (e <= s) e += 1440;
-        if (s < 720) { s += 1440; e += 1440; }
-        return [s, e];
-      })();
+    function findOverlappingSegs(newDate, newSleep, newWake, existingSegs, excludeId = null) {
+      const [ns, ne] = segToInterval({ date: newDate, sleep: newSleep, wake: newWake });
       return existingSegs.filter(l => {
         if (excludeId && String(l.id) === String(excludeId)) return false;
         const [s, e] = segToInterval(l);
@@ -2865,6 +2883,13 @@
       const sops = DB.get('sop'), el = document.getElementById('sop-list');
       if (!sops.length) { el.innerHTML = '<div class="empty">还没有 SOP</div>'; return }
 
+      // 多个家庭成员的 SOP 合并显示时，标注每一条的贡献者
+      const contributorIds = new Set(sops.map(s => s.execBy).filter(Boolean));
+      const showContributor = contributorIds.size > 1;
+      if (CU?.familyId) {
+        ensureMemberNamesLoaded(CU.familyId).then(changed => { if (changed) renderSOP(); });
+      }
+
       // Group sops by category
       const groups = {};
       sops.forEach(s => {
@@ -2886,7 +2911,7 @@
           <div class="sop-item">
             <div style="display:flex;align-items:flex-start">
               <div style="flex:1;cursor:pointer" data-sop-toggle="${s.id}">
-                <div style="font-weight:500">${s.name}</div>
+                <div style="font-weight:500">${s.name}${showContributor ? ` <span style="font-weight:400;font-size:11px;color:var(--muted)">（贡献者：${getMemberName(s.execBy)}）</span>` : ''}</div>
                 <div style="font-size:11px;color:var(--muted);margin-top:2px">${s.steps.length}步 ▾</div>
               </div>
               <button class="edit-btn" data-sop-edit="${s.id}">编辑</button>
@@ -2957,8 +2982,8 @@
     function renderGoalTagChips(sel = []) { const c = document.getElementById('goal-tag-chips'); c.innerHTML = ''; getAllTags().forEach(t => { const s = document.createElement('span'); s.className = 'chip' + (sel.includes(t) ? ' selected' : ''); s.textContent = t; s.addEventListener('click', () => s.classList.toggle('selected')); c.appendChild(s) }) }
     document.getElementById('goal-tag-input').addEventListener('keydown', e => { if (e.key !== 'Enter') return; e.preventDefault(); const v = e.target.value.trim(); if (!v) return; saveTag(v); renderGoalTagChips([...getSelected('goal-tag-chips'), v]); e.target.value = '' })
     document.getElementById('goal-add-btn').addEventListener('click', () => { editingGoalId = null; document.getElementById('goal-modal-title').textContent = '添加目标 / 待办'; document.getElementById('goal-text').value = ''; document.getElementById('goal-date').value = ''; document.querySelectorAll('#goal-type-chips .chip').forEach((c, i) => c.classList.toggle('selected', i === 0)); renderGoalTagChips(); openModal('goal-modal') })
-    document.getElementById('goal-save-btn').addEventListener('click', () => { const text = document.getElementById('goal-text').value.trim(); if (!text) return alert('请填写内容'); const tags = getSelected('goal-tag-chips'); tags.forEach(saveTag); const goals = DB.get('goals'), entry = { text, tags, type: getSingleVal('goal-type-chips') || 'long', dueDate: document.getElementById('goal-date').value || null }; if (editingGoalId) { const idx = goals.findIndex(g => String(g.id) === String(editingGoalId)); if (idx >= 0) goals[idx] = { ...goals[idx], ...entry } } else goals.push({ id: Date.now(), done: false, created: today(), ...entry }); DB.set('goals', goals); closeModal('goal-modal'); dbSync('goals').then(() => renderGoals()) })
-    function renderGoals() { const goals = DB.get('goals'), renderList = (list, elId) => { const el = document.getElementById(elId); el.innerHTML = ''; if (!list.length) { el.innerHTML = '<div class="empty">暂无</div>'; return } list.forEach(g => { const div = document.createElement('div'); div.className = 'goal-item'; div.innerHTML = `<div class="g-check${g.done ? ' done' : ''}"></div><div style="flex:1"><div class="g-text${g.done ? ' done' : ''}">${g.text}</div><div class="g-meta">${g.dueDate ? `<span>${fmtDate(g.dueDate)}</span>` : ''} ${g.tags?.map(t => `<span class="g-tag">${t}</span>`).join('') || ''}</div></div><button class="edit-btn">编辑</button><button class="del-btn">✕</button>`; div.querySelector('.g-check').addEventListener('click', () => { const gs = DB.get('goals'), gx = gs.find(x => String(x.id) === String(g.id)); if (gx) gx.done = !gx.done; DB.set('goals', gs); dbSync('goals').then(() => renderGoals()) }); div.querySelector('.edit-btn').addEventListener('click', () => { editingGoalId = g.id; document.getElementById('goal-modal-title').textContent = '编辑'; document.getElementById('goal-text').value = g.text; document.getElementById('goal-date').value = g.dueDate || ''; document.querySelectorAll('#goal-type-chips .chip').forEach(c => c.classList.toggle('selected', c.dataset.val === g.type)); renderGoalTagChips(g.tags || []); openModal('goal-modal') }); div.querySelector('.del-btn').addEventListener('click', async () => { const id = String(g.id); DB.set('goals', DB.get('goals').filter(x => String(x.id) !== id)); await dbDel('goals', id); renderGoals() }); el.appendChild(div) }) }; renderList(goals.filter(g => g.type === 'long'), 'goal-long'); renderList(goals.filter(g => g.type === 'todo'), 'goal-todo') }
+    document.getElementById('goal-save-btn').addEventListener('click', () => { const text = document.getElementById('goal-text').value.trim(); if (!text) return alert('请填写内容'); const tags = getSelected('goal-tag-chips'); tags.forEach(saveTag); const goals = DB.get('goals'), entry = { text, tags, type: getSingleVal('goal-type-chips') || 'long', dueDate: document.getElementById('goal-date').value || null, createdBy: authUid }; if (editingGoalId) { const idx = goals.findIndex(g => String(g.id) === String(editingGoalId)); if (idx >= 0) goals[idx] = { ...goals[idx], ...entry } } else goals.push({ id: Date.now(), done: false, created: today(), ...entry }); DB.set('goals', goals); closeModal('goal-modal'); dbSync('goals').then(() => renderGoals()) })
+    function renderGoals() { const goals = DB.get('goals'); const showContributor = new Set(goals.map(g => g.createdBy).filter(Boolean)).size > 1; if (CU?.familyId) { ensureMemberNamesLoaded(CU.familyId).then(changed => { if (changed) renderGoals() }) } const renderList = (list, elId) => { const el = document.getElementById(elId); el.innerHTML = ''; if (!list.length) { el.innerHTML = '<div class="empty">暂无</div>'; return } list.forEach(g => { const div = document.createElement('div'); div.className = 'goal-item'; div.innerHTML = `<div class="g-check${g.done ? ' done' : ''}"></div><div style="flex:1"><div class="g-text${g.done ? ' done' : ''}">${g.text}</div><div class="g-meta">${g.dueDate ? `<span>${fmtDate(g.dueDate)}</span>` : ''} ${g.tags?.map(t => `<span class="g-tag">${t}</span>`).join('') || ''}${showContributor ? `<span class="g-tag">贡献者：${getMemberName(g.createdBy)}</span>` : ''}</div></div><button class="edit-btn">编辑</button><button class="del-btn">✕</button>`; div.querySelector('.g-check').addEventListener('click', () => { const gs = DB.get('goals'), gx = gs.find(x => String(x.id) === String(g.id)); if (gx) gx.done = !gx.done; DB.set('goals', gs); dbSync('goals').then(() => renderGoals()) }); div.querySelector('.edit-btn').addEventListener('click', () => { editingGoalId = g.id; document.getElementById('goal-modal-title').textContent = '编辑'; document.getElementById('goal-text').value = g.text; document.getElementById('goal-date').value = g.dueDate || ''; document.querySelectorAll('#goal-type-chips .chip').forEach(c => c.classList.toggle('selected', c.dataset.val === g.type)); renderGoalTagChips(g.tags || []); openModal('goal-modal') }); div.querySelector('.del-btn').addEventListener('click', async () => { const id = String(g.id); DB.set('goals', DB.get('goals').filter(x => String(x.id) !== id)); await dbDel('goals', id); renderGoals() }); el.appendChild(div) }) }; renderList(goals.filter(g => g.type === 'long'), 'goal-long'); renderList(goals.filter(g => g.type === 'todo'), 'goal-todo') }
 
     /* ═══════════════ DIARY / REFLECTION ═══════════════ */
     let editingDiaryId = null, diaryFilterDays = 30;
@@ -3009,7 +3034,7 @@
         entry.createdAt = entry.updatedAt;
         diaries.push(entry);
       }
-      diaries.sort((a, b) => b.date.localeCompare(a.date));
+      diaries.sort((a, b) => b.date !== a.date ? b.date.localeCompare(a.date) : (b.createdAt || '').localeCompare(a.createdAt || ''));
       DB.set('diary', diaries);
       closeModal('diary-modal');
       await dbSet('diary', diaries.find(d => String(d.id) === String(entry.id)));
@@ -3026,7 +3051,7 @@
     });
 
     function renderDiary() {
-      let diaries = [...DB.get('diary')].sort((a, b) => b.date.localeCompare(a.date));
+      let diaries = [...DB.get('diary')].sort((a, b) => b.date !== a.date ? b.date.localeCompare(a.date) : (b.createdAt || '').localeCompare(a.createdAt || ''));
       if (diaryFilterDays > 0) {
         const cutoff = addDate(today(), -diaryFilterDays);
         diaries = diaries.filter(d => d.date >= cutoff);
