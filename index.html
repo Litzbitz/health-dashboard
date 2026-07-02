@@ -2207,11 +2207,6 @@
       el.querySelectorAll('[data-feat]').forEach(chip => chip.addEventListener('click', async () => {
         const p = chip.dataset.feat;
         const nowVisible = !chip.classList.contains('selected');
-        if (!nowVisible) {
-          // 至少保留一个可见的个人功能页
-          const stillVisible = FEATURE_PAGES.filter(x => x !== p && isPageVisible(x));
-          if (!stillVisible.length) return alert('至少保留一个功能可见');
-        }
         chip.classList.toggle('selected', nowVisible);
         if (!CU.featureVisibility) CU.featureVisibility = {};
         CU.featureVisibility[p] = nowVisible;
