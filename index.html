@@ -1925,6 +1925,8 @@
     /* ═══════════════ UTILS ═══════════════ */
     function today() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') }
     function fmtDate(d) { const x = new Date(d + 'T00:00:00'); return x.getFullYear() + '/' + (x.getMonth() + 1) + '/' + x.getDate() }
+    const WEEKDAY_ZH = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    function fmtDateWithWeekday(d) { const x = new Date(d + 'T00:00:00'); return `${x.getFullYear()}年${x.getMonth() + 1}月${x.getDate()}日 ${WEEKDAY_ZH[x.getDay()]}` }
     function fmtDateShort(d) { const x = new Date(d + 'T00:00:00'); return (x.getMonth() + 1) + '/' + x.getDate() }
     function timeToMin(t) { const [h, m] = String(t || '00:00').split(':').map(Number); return h * 60 + m }
     function dateToDayNum(d) { return Math.floor(new Date(d + 'T00:00:00Z').getTime() / 86400000) }
@@ -3031,7 +3033,7 @@
           const log = Array.isArray(s.execLog) ? s.execLog : [];
           const recent = [...log].sort((a, b) => (b.ts || '').localeCompare(a.ts || '')).slice(0, 5);
           const execHistoryHtml = log.length
-            ? `<div style="margin-top:7px;font-size:12px;color:var(--muted)"><strong style="color:var(--text);font-weight:500">执行记录（共${log.length}次）：</strong>${recent.map(r => `${fmtDate(r.date)} ${getMemberName(r.uid)}`).join('、')}</div>`
+            ? `<div style="margin-top:7px;font-size:12px;color:var(--muted)"><strong style="color:var(--text);font-weight:500">执行记录（共${log.length}次）：</strong>${recent.map(r => `${fmtDateWithWeekday(r.date)} ${getMemberName(r.uid)}`).join('、')}</div>`
             : '';
           return `
           <div class="sop-item">
@@ -3122,7 +3124,7 @@
       log.sort((a, b) => (b.ts || '').localeCompare(a.ts || ''));
       if (!log.length) { el.innerHTML = '<div class="empty">还没有执行记录</div>'; return; }
       el.innerHTML = log.map(r => `<div class="mgr-info" style="display:flex;justify-content:space-between;gap:8px">
-        <span>${fmtDate(r.date)} · ${getMemberName(r.uid)}${r.note ? ` — ${r.note}` : ''}</span>
+        <span>${fmtDateWithWeekday(r.date)} · ${getMemberName(r.uid)}${r.note ? ` — ${r.note}` : ''}</span>
       </div>`).join('');
     }
     function openSopLogModal(sopId) {
