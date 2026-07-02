@@ -1507,6 +1507,11 @@
           <div class="card-title">家庭</div>
           <div id="settings-family"></div>
         </div>
+        <div class="card">
+          <div class="card-title">个人功能显示</div>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:10px">关闭后，对应功能会从你的导航栏隐藏（不影响其他家庭成员，也不会删除已有数据）</p>
+          <div id="settings-features"></div>
+        </div>
         <div class="card" id="migration-card" style="border-style:dashed;border-color:rgba(175,82,222,.2);background:rgba(175,82,222,.04)">
           <div class="card-title" style="color:var(--purple)">旧数据迁移</div>
           <p style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:10px">从本地旧账户（localStorage / user_default）迁移数据到当前家庭与个人空间。</p>
@@ -1520,6 +1525,7 @@
     <div class="modal">
       <div class="modal-title" id="diary-modal-title">写日记</div>
       <label>日期</label><input type="date" id="diary-date">
+      <label>时间</label><input type="time" id="diary-time">
       <label>标题</label><input type="text" id="diary-title" placeholder="今天的主题……">
       <label>心情</label>
       <div class="chips" id="diary-mood-chips" style="font-size:20px">
@@ -1645,7 +1651,20 @@
           data-close="sop-modal">取消</button></div>
     </div>
   </div>
+  <div class="modal-overlay" id="sop-log-modal">
+    <div class="modal">
+      <div class="modal-title" id="sop-log-modal-title">记录执行</div>
+      <label>执行日期</label><input type="date" id="sop-log-date">
+      <label>备注（可选）</label><input type="text" id="sop-log-note" placeholder="例：用了新方法">
+      <div class="flex" style="margin-top:8px"><button class="btn" id="sop-log-save-btn">确认已执行</button><button
+          class="btn btn-ghost" data-close="sop-log-modal">取消</button></div>
+      <hr style="border:none;border-top:1px solid var(--border);margin:14px 0">
+      <div class="mgr-info" style="margin-bottom:6px">执行历史</div>
+      <div id="sop-log-history" style="max-height:220px;overflow-y:auto"></div>
+    </div>
+  </div>
   <!-- Goal Modal -->
+
   <div class="modal-overlay" id="goal-modal">
     <div class="modal">
       <div class="modal-title" id="goal-modal-title">添加目标 / 待办</div><label>内容</label><input type="text" id="goal-text"
@@ -1990,7 +2009,7 @@
       let profile;
       if (snap.exists()) {
         const data = snap.data();
-        profile = { id: fbUser.uid, name: data.name || fbUser.displayName || (fbUser.email || '').split('@')[0], avatar: data.avatar || '🙋', familyId: data.familyId || null, role: data.role || 'admin', createdAt: data.createdAt || null };
+        profile = { id: fbUser.uid, name: data.name || fbUser.displayName || (fbUser.email || '').split('@')[0], avatar: data.avatar || '🙋', familyId: data.familyId || null, role: data.role || 'admin', createdAt: data.createdAt || null, featureVisibility: data.featureVisibility || null };
       } else {
         profile = { id: fbUser.uid, name: fbUser.displayName || (fbUser.email || '').split('@')[0], avatar: '🙋', familyId: null, createdAt: new Date().toISOString(), role: 'admin' };
         await setDoc(ref, { name: profile.name, avatar: profile.avatar, familyId: null, createdAt: profile.createdAt });
@@ -2019,7 +2038,7 @@
 
     async function saveProfile() {
       if (!authUid || !CU) return;
-      await setDoc(doc(db, 'users', authUid), { name: CU.name, avatar: CU.avatar, familyId: CU.familyId || null, createdAt: CU.createdAt || new Date().toISOString() }, { merge: true });
+      await setDoc(doc(db, 'users', authUid), { name: CU.name, avatar: CU.avatar, familyId: CU.familyId || null, createdAt: CU.createdAt || new Date().toISOString(), featureVisibility: CU.featureVisibility || null }, { merge: true });
     }
 
     async function changePassword() {
@@ -2158,6 +2177,7 @@
       });
       acc.querySelector('#set-logout-btn').addEventListener('click', signOutUser);
       acc.querySelector('#set-change-pass-btn').addEventListener('click', changePassword);
+      renderSettingsFeatures();
 
       if (CU.familyId) {
         fam.innerHTML = `<div class="mgr-info">家庭名称：<strong>${CU.familyName || CU.familyId}</strong> <button class="btn btn-sm btn-ghost" id="set-rename-family-btn" style="margin-left:4px">改名</button></div>
@@ -2175,6 +2195,29 @@
         fam.querySelector('#set-open-family-btn').addEventListener('click', () => openModal('family-modal'));
       }
       renderMigrationList();
+    }
+
+    const FEATURE_LABELS = { sleep: 'Sleep 睡眠记录', analysis: 'Analysis 睡眠分析', body: 'Body 身体记录' };
+    function renderSettingsFeatures() {
+      const el = document.getElementById('settings-features');
+      if (!el || !CU) return;
+      el.innerHTML = `<div class="chips" id="feat-vis-chips">${FEATURE_PAGES.map(p =>
+        `<span class="chip${isPageVisible(p) ? ' selected' : ''}" data-feat="${p}">${FEATURE_LABELS[p]}</span>`
+      ).join('')}</div>`;
+      el.querySelectorAll('[data-feat]').forEach(chip => chip.addEventListener('click', async () => {
+        const p = chip.dataset.feat;
+        const nowVisible = !chip.classList.contains('selected');
+        if (!nowVisible) {
+          // 至少保留一个可见的个人功能页
+          const stillVisible = FEATURE_PAGES.filter(x => x !== p && isPageVisible(x));
+          if (!stillVisible.length) return alert('至少保留一个功能可见');
+        }
+        chip.classList.toggle('selected', nowVisible);
+        if (!CU.featureVisibility) CU.featureVisibility = {};
+        CU.featureVisibility[p] = nowVisible;
+        await saveProfile();
+        refreshFeatureVisibility();
+      }));
     }
 
     // uid -> 显示名称 缓存，用于在合并后的家庭 SOP / 目标条目上标注贡献者
@@ -2263,7 +2306,7 @@
         btn.classList.remove('btn-warn'); btn.classList.add('btn-ghost');
         btn.textContent = '已迁移';
         alert('迁移完成');
-        navigateTo(currentScope === 'family' ? 'sop' : 'sleep');
+        navigateTo(currentScope === 'family' ? 'sop' : firstVisiblePersonalPage());
       } catch (e) { console.error(e); alert('迁移失败：' + e.message); }
       finally { hideLoading(); }
     }
@@ -2332,11 +2375,30 @@
     /* ═══════════════ PAGE ROUTING ═══════════════ */
     const pageRenderers = { sleep: renderSleep, analysis: renderAnalysis, body: renderBody, sop: renderSOP, goals: renderGoals, diary: renderDiary, settings: renderSettings }
 
+    const FEATURE_PAGES = ['sleep', 'analysis', 'body'];
+    function isPageVisible(page) {
+      if (!FEATURE_PAGES.includes(page)) return true;
+      return !CU || CU.featureVisibility?.[page] !== false;
+    }
+    function firstVisiblePersonalPage() {
+      for (const p of ['sleep', 'analysis', 'body', 'diary', 'settings']) if (isPageVisible(p)) return p;
+      return 'settings';
+    }
     function applyScope() {
       document.querySelectorAll('.top-tab').forEach(b => b.classList.toggle('active', b.dataset.top === currentScope));
       document.querySelectorAll('nav .nav-page').forEach(b => {
-        b.style.display = (b.dataset.scope === currentScope) ? '' : 'none';
+        const scopeMatch = b.dataset.scope === currentScope;
+        b.style.display = (scopeMatch && isPageVisible(b.dataset.page)) ? '' : 'none';
       });
+    }
+    // 重新应用功能显示设置（在设置页勾选后调用）：更新导航栏，若当前页被隐藏则跳转到第一个可见页
+    function refreshFeatureVisibility() {
+      applyScope();
+      const activeBtn = document.querySelector('nav .nav-page.active');
+      const activePage = activeBtn?.dataset.page;
+      if (activePage && FEATURE_PAGES.includes(activePage) && !isPageVisible(activePage)) {
+        navigateTo(firstVisiblePersonalPage());
+      }
     }
     function navigateTo(page) {
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -2355,7 +2417,7 @@
       }
       currentScope = scope;
       applyScope();
-      navigateTo(scope === 'family' ? 'sop' : 'sleep');
+      navigateTo(scope === 'family' ? 'sop' : firstVisiblePersonalPage());
     }
     document.querySelectorAll('nav .nav-page').forEach(btn => btn.addEventListener('click', () => {
       const page = btn.dataset.page, scope = btn.dataset.scope;
@@ -2924,7 +2986,23 @@
     /* ═══════════════ SOP ═══════════════ */
     let editingSopId = null
     document.getElementById('sop-add-btn').addEventListener('click', () => { editingSopId = null; document.getElementById('sop-modal-title').textContent = '添加 SOP';['sop-name', 'sop-cat', 'sop-steps-input', 'sop-note'].forEach(id => document.getElementById(id).value = ''); openModal('sop-modal') })
-    document.getElementById('sop-save-btn').addEventListener('click', () => { const name = document.getElementById('sop-name').value.trim(), steps = document.getElementById('sop-steps-input').value.trim(); if (!name || !steps) return alert('请填写名称和步骤'); const sops = DB.get('sop'), entry = { name, cat: document.getElementById('sop-cat').value.trim(), steps: steps.split('\n').filter(s => s.trim()), note: document.getElementById('sop-note').value.trim(), execBy: authUid, execAt: new Date().toISOString() }; if (editingSopId) { const idx = sops.findIndex(s => String(s.id) === String(editingSopId)); if (idx >= 0) sops[idx] = { ...sops[idx], ...entry } } else sops.push({ id: Date.now(), created: today(), ...entry }); DB.set('sop', sops); closeModal('sop-modal'); dbSync('sop').then(() => renderSOP()) })
+    document.getElementById('sop-save-btn').addEventListener('click', () => {
+      const name = document.getElementById('sop-name').value.trim(), steps = document.getElementById('sop-steps-input').value.trim();
+      if (!name || !steps) return alert('请填写名称和步骤');
+      const sops = DB.get('sop');
+      const fields = { name, cat: document.getElementById('sop-cat').value.trim(), steps: steps.split('\n').filter(s => s.trim()), note: document.getElementById('sop-note').value.trim() };
+      if (editingSopId) {
+        const idx = sops.findIndex(s => String(s.id) === String(editingSopId));
+        if (idx >= 0) {
+          const existing = sops[idx];
+          if (CU?.familyId && existing.execBy && existing.execBy !== authUid) { alert('只能编辑自己创建的 SOP'); return; }
+          sops[idx] = { ...existing, ...fields };
+        }
+      } else {
+        sops.push({ id: Date.now(), created: today(), execBy: authUid, execAt: new Date().toISOString(), execLog: [], ...fields });
+      }
+      DB.set('sop', sops); closeModal('sop-modal'); dbSync('sop').then(() => renderSOP())
+    })
     document.getElementById('sop-export-btn').addEventListener('click', () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(DB.get('sop'), null, 2)], { type: 'application/json' })); a.download = 'sop-export.json'; a.click() })
     function renderSOP() {
       const sops = DB.get('sop'), el = document.getElementById('sop-list');
@@ -2953,22 +3031,31 @@
 
       el.innerHTML = groupNames.map((cat, groupIdx) => {
         const catSops = groups[cat];
-        const sopsHtml = catSops.map(s => `
+        const sopsHtml = catSops.map(s => {
+          const canEdit = !CU?.familyId || !s.execBy || s.execBy === authUid;
+          const log = Array.isArray(s.execLog) ? s.execLog : [];
+          const recent = [...log].sort((a, b) => (b.ts || '').localeCompare(a.ts || '')).slice(0, 5);
+          const execHistoryHtml = log.length
+            ? `<div style="margin-top:7px;font-size:12px;color:var(--muted)"><strong style="color:var(--text);font-weight:500">执行记录（共${log.length}次）：</strong>${recent.map(r => `${fmtDate(r.date)} ${getMemberName(r.uid)}`).join('、')}</div>`
+            : '';
+          return `
           <div class="sop-item">
             <div style="display:flex;align-items:flex-start">
               <div style="flex:1;cursor:pointer" data-sop-toggle="${s.id}">
                 <div style="font-weight:500">${s.name}${showContributor && s.execBy ? ` <span style="font-weight:400;font-size:11px;color:var(--muted)">（贡献者：${getMemberName(s.execBy)}）</span>` : ''}</div>
                 <div style="font-size:11px;color:var(--muted);margin-top:2px">${s.steps.length}步 ▾</div>
               </div>
-              <button class="edit-btn" data-sop-edit="${s.id}">编辑</button>
-              <button class="del-btn" data-sop-del="${s.id}">✕</button>
+              <button class="btn btn-sm btn-ghost" data-sop-exec="${s.id}">记录</button>
+              ${canEdit ? `<button class="edit-btn" data-sop-edit="${s.id}">编辑</button><button class="del-btn" data-sop-del="${s.id}">✕</button>` : ''}
             </div>
             <div class="sop-steps-body" id="sop-body-${s.id}">
               <ol>${s.steps.map(st => `<li>${st}</li>`).join('')}</ol>
               ${s.note ? `<div style="margin-top:7px;font-size:12px;color:var(--muted)"><strong style="color:var(--text);font-weight:500">备注：</strong>${s.note}</div>` : ''}
+              ${execHistoryHtml}
             </div>
           </div>
-        `).join('');
+        `;
+        }).join('');
 
         return `
           <div class="sop-group">
@@ -2998,11 +3085,19 @@
       // Wire up toggle for individual sops
       el.querySelectorAll('[data-sop-toggle]').forEach(e => e.addEventListener('click', () => document.getElementById('sop-body-' + e.dataset.sopToggle)?.classList.toggle('open')));
 
+      // Wire up execution logging — anyone in the family can record they performed this SOP
+      el.querySelectorAll('[data-sop-exec]').forEach(btn => btn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        openSopLogModal(btn.dataset.sopExec);
+      }));
+
       // Wire up delete
       el.querySelectorAll('[data-sop-del]').forEach(btn => btn.addEventListener('click', async () => {
-        if (!confirm('删除？')) return;
         const id = btn.dataset.sopDel;
-        DB.set('sop', DB.get('sop').filter(s => String(s.id) !== id));
+        const s = DB.get('sop').find(x => String(x.id) === String(id));
+        if (CU?.familyId && s?.execBy && s.execBy !== authUid) return alert('只能删除自己创建的 SOP');
+        if (!confirm('删除？')) return;
+        DB.set('sop', DB.get('sop').filter(x => String(x.id) !== id));
         await dbDel('sop', id);
         renderSOP();
       }));
@@ -3011,6 +3106,7 @@
       el.querySelectorAll('[data-sop-edit]').forEach(btn => btn.addEventListener('click', () => {
         const s = DB.get('sop').find(x => String(x.id) === btn.dataset.sopEdit);
         if (!s) return;
+        if (CU?.familyId && s.execBy && s.execBy !== authUid) return alert('只能编辑自己创建的 SOP');
         editingSopId = s.id;
         document.getElementById('sop-modal-title').textContent = '编辑 SOP';
         document.getElementById('sop-name').value = s.name;
@@ -3021,6 +3117,46 @@
       }));
     }
 
+    /* ═══════════════ SOP EXECUTION LOG ═══════════════ */
+    let sopLogTargetId = null;
+    function renderSopLogHistory(sopId) {
+      const el = document.getElementById('sop-log-history');
+      if (!el) return;
+      const s = DB.get('sop').find(x => String(x.id) === String(sopId));
+      const log = (s && Array.isArray(s.execLog)) ? [...s.execLog] : [];
+      log.sort((a, b) => (b.ts || '').localeCompare(a.ts || ''));
+      if (!log.length) { el.innerHTML = '<div class="empty">还没有执行记录</div>'; return; }
+      el.innerHTML = log.map(r => `<div class="mgr-info" style="display:flex;justify-content:space-between;gap:8px">
+        <span>${fmtDate(r.date)} · ${getMemberName(r.uid)}${r.note ? ` — ${r.note}` : ''}</span>
+      </div>`).join('');
+    }
+    function openSopLogModal(sopId) {
+      sopLogTargetId = sopId;
+      const s = DB.get('sop').find(x => String(x.id) === String(sopId));
+      document.getElementById('sop-log-modal-title').textContent = `记录执行 · ${s ? s.name : ''}`;
+      document.getElementById('sop-log-date').value = today();
+      document.getElementById('sop-log-note').value = '';
+      renderSopLogHistory(sopId);
+      openModal('sop-log-modal');
+    }
+    document.getElementById('sop-log-save-btn').addEventListener('click', async () => {
+      if (!sopLogTargetId) return;
+      const d = document.getElementById('sop-log-date').value || today();
+      const note = document.getElementById('sop-log-note').value.trim();
+      const sops = DB.get('sop');
+      const s = sops.find(x => String(x.id) === String(sopLogTargetId));
+      if (!s) return;
+      if (!Array.isArray(s.execLog)) s.execLog = [];
+      const logEntry = { date: d, uid: authUid, ts: new Date().toISOString() };
+      if (note) logEntry.note = note;
+      s.execLog.push(logEntry);
+      DB.set('sop', sops);
+      await dbSync('sop');
+      document.getElementById('sop-log-note').value = '';
+      renderSopLogHistory(sopLogTargetId);
+      renderSOP();
+    });
+
     /* ═══════════════ GOALS ═══════════════ */
     let editingGoalId = null
     const DEFAULT_TAGS = ['健康', '家务', '工作', '学习', '生活']
@@ -3028,8 +3164,45 @@
     function renderGoalTagChips(sel = []) { const c = document.getElementById('goal-tag-chips'); c.innerHTML = ''; getAllTags().forEach(t => { const s = document.createElement('span'); s.className = 'chip' + (sel.includes(t) ? ' selected' : ''); s.textContent = t; s.addEventListener('click', () => s.classList.toggle('selected')); c.appendChild(s) }) }
     document.getElementById('goal-tag-input').addEventListener('keydown', e => { if (e.key !== 'Enter') return; e.preventDefault(); const v = e.target.value.trim(); if (!v) return; saveTag(v); renderGoalTagChips([...getSelected('goal-tag-chips'), v]); e.target.value = '' })
     document.getElementById('goal-add-btn').addEventListener('click', () => { editingGoalId = null; document.getElementById('goal-modal-title').textContent = '添加目标 / 待办'; document.getElementById('goal-text').value = ''; document.getElementById('goal-date').value = ''; document.querySelectorAll('#goal-type-chips .chip').forEach((c, i) => c.classList.toggle('selected', i === 0)); renderGoalTagChips(); openModal('goal-modal') })
-    document.getElementById('goal-save-btn').addEventListener('click', () => { const text = document.getElementById('goal-text').value.trim(); if (!text) return alert('请填写内容'); const tags = getSelected('goal-tag-chips'); tags.forEach(saveTag); const goals = DB.get('goals'), entry = { text, tags, type: getSingleVal('goal-type-chips') || 'long', dueDate: document.getElementById('goal-date').value || null, createdBy: authUid }; if (editingGoalId) { const idx = goals.findIndex(g => String(g.id) === String(editingGoalId)); if (idx >= 0) goals[idx] = { ...goals[idx], ...entry } } else goals.push({ id: Date.now(), done: false, created: today(), ...entry }); DB.set('goals', goals); closeModal('goal-modal'); dbSync('goals').then(() => renderGoals()) })
-    function renderGoals() { const goals = DB.get('goals'); const showContributor = !!CU?.familyId; if (CU?.familyId) { ensureMemberNamesLoaded(CU.familyId).then(changed => { if (changed) renderGoals() }) } const renderList = (list, elId) => { const el = document.getElementById(elId); el.innerHTML = ''; if (!list.length) { el.innerHTML = '<div class="empty">暂无</div>'; return } list.forEach(g => { const div = document.createElement('div'); div.className = 'goal-item'; div.innerHTML = `<div class="g-check${g.done ? ' done' : ''}"></div><div style="flex:1"><div class="g-text${g.done ? ' done' : ''}">${g.text}</div><div class="g-meta">${g.dueDate ? `<span>${fmtDate(g.dueDate)}</span>` : ''} ${g.tags?.map(t => `<span class="g-tag">${t}</span>`).join('') || ''}${showContributor && g.createdBy ? `<span class="g-tag">贡献者：${getMemberName(g.createdBy)}</span>` : ''}</div></div><button class="edit-btn">编辑</button><button class="del-btn">✕</button>`; div.querySelector('.g-check').addEventListener('click', () => { const gs = DB.get('goals'), gx = gs.find(x => String(x.id) === String(g.id)); if (gx) gx.done = !gx.done; DB.set('goals', gs); dbSync('goals').then(() => renderGoals()) }); div.querySelector('.edit-btn').addEventListener('click', () => { editingGoalId = g.id; document.getElementById('goal-modal-title').textContent = '编辑'; document.getElementById('goal-text').value = g.text; document.getElementById('goal-date').value = g.dueDate || ''; document.querySelectorAll('#goal-type-chips .chip').forEach(c => c.classList.toggle('selected', c.dataset.val === g.type)); renderGoalTagChips(g.tags || []); openModal('goal-modal') }); div.querySelector('.del-btn').addEventListener('click', async () => { const id = String(g.id); DB.set('goals', DB.get('goals').filter(x => String(x.id) !== id)); await dbDel('goals', id); renderGoals() }); el.appendChild(div) }) }; renderList(goals.filter(g => g.type === 'long'), 'goal-long'); renderList(goals.filter(g => g.type === 'todo'), 'goal-todo') }
+    document.getElementById('goal-save-btn').addEventListener('click', () => {
+      const text = document.getElementById('goal-text').value.trim();
+      if (!text) return alert('请填写内容');
+      const tags = getSelected('goal-tag-chips'); tags.forEach(saveTag);
+      const goals = DB.get('goals');
+      const fields = { text, tags, type: getSingleVal('goal-type-chips') || 'long', dueDate: document.getElementById('goal-date').value || null };
+      if (editingGoalId) {
+        const idx = goals.findIndex(g => String(g.id) === String(editingGoalId));
+        if (idx >= 0) {
+          const existing = goals[idx];
+          if (CU?.familyId && existing.createdBy && existing.createdBy !== authUid) { alert('只能编辑自己创建的目标 / 待办'); return; }
+          goals[idx] = { ...existing, ...fields };
+        }
+      } else {
+        goals.push({ id: Date.now(), done: false, created: today(), createdBy: authUid, ...fields });
+      }
+      DB.set('goals', goals); closeModal('goal-modal'); dbSync('goals').then(() => renderGoals())
+    })
+    function renderGoals() {
+      const goals = DB.get('goals');
+      const showContributor = !!CU?.familyId;
+      if (CU?.familyId) { ensureMemberNamesLoaded(CU.familyId).then(changed => { if (changed) renderGoals() }) }
+      const renderList = (list, elId) => {
+        const el = document.getElementById(elId); el.innerHTML = '';
+        if (!list.length) { el.innerHTML = '<div class="empty">暂无</div>'; return }
+        list.forEach(g => {
+          const canEdit = !CU?.familyId || !g.createdBy || g.createdBy === authUid;
+          const div = document.createElement('div');
+          div.className = 'goal-item';
+          div.innerHTML = `<div class="g-check${g.done ? ' done' : ''}"></div><div style="flex:1"><div class="g-text${g.done ? ' done' : ''}">${g.text}</div><div class="g-meta">${g.dueDate ? `<span>${fmtDate(g.dueDate)}</span>` : ''} ${g.tags?.map(t => `<span class="g-tag">${t}</span>`).join('') || ''}${showContributor && g.createdBy ? `<span class="g-tag">贡献者：${getMemberName(g.createdBy)}</span>` : ''}</div></div>${canEdit ? `<button class="edit-btn">编辑</button><button class="del-btn">✕</button>` : ''}`;
+          div.querySelector('.g-check').addEventListener('click', () => { const gs = DB.get('goals'), gx = gs.find(x => String(x.id) === String(g.id)); if (gx) gx.done = !gx.done; DB.set('goals', gs); dbSync('goals').then(() => renderGoals()) });
+          div.querySelector('.edit-btn')?.addEventListener('click', () => { editingGoalId = g.id; document.getElementById('goal-modal-title').textContent = '编辑'; document.getElementById('goal-text').value = g.text; document.getElementById('goal-date').value = g.dueDate || ''; document.querySelectorAll('#goal-type-chips .chip').forEach(c => c.classList.toggle('selected', c.dataset.val === g.type)); renderGoalTagChips(g.tags || []); openModal('goal-modal') });
+          div.querySelector('.del-btn')?.addEventListener('click', async () => { const id = String(g.id); DB.set('goals', DB.get('goals').filter(x => String(x.id) !== id)); await dbDel('goals', id); renderGoals() });
+          el.appendChild(div)
+        })
+      };
+      renderList(goals.filter(g => g.type === 'long'), 'goal-long');
+      renderList(goals.filter(g => g.type === 'todo'), 'goal-todo')
+    }
 
     /* ═══════════════ DIARY / REFLECTION ═══════════════ */
     let editingDiaryId = null, diaryFilterDays = 30;
@@ -3050,10 +3223,15 @@
       });
     }
 
+    function nowHM() { const d = new Date(); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+    function diaryTimeOf(d) { return d.time || (d.createdAt ? d.createdAt.slice(11, 16) : ''); }
+    function fmtDiaryDate(dateStr) { const x = new Date(dateStr + 'T00:00:00'); return `${x.getFullYear()}年${x.getMonth() + 1}月${x.getDate()}日`; }
+    function fmtDiaryDateTime(d) { const t = diaryTimeOf(d); return t ? `${fmtDiaryDate(d.date)}  ${t}` : fmtDiaryDate(d.date); }
     function resetDiaryModal() {
       editingDiaryId = null;
       document.getElementById('diary-modal-title').textContent = '写日记';
       document.getElementById('diary-date').value = today();
+      document.getElementById('diary-time').value = nowHM();
       document.getElementById('diary-title').value = '';
       document.getElementById('diary-content').value = '';
       document.querySelectorAll('#diary-mood-chips .chip').forEach((c, i) => c.classList.toggle('selected', i === 0));
@@ -3065,11 +3243,12 @@
 
     document.getElementById('diary-save-btn').addEventListener('click', async () => {
       const date = document.getElementById('diary-date').value;
+      const time = document.getElementById('diary-time').value || nowHM();
       const title = document.getElementById('diary-title').value.trim();
       const content = document.getElementById('diary-content').value.trim();
       if (!date || !content) return alert('请填写日期和内容');
       const mood = getSingleVal('diary-mood-chips') || '😊';
-      const entry = { date, mood, title, content, updatedAt: new Date().toISOString() };
+      const entry = { date, time, mood, title, content, updatedAt: new Date().toISOString() };
       const diaries = DB.get('diary');
       if (editingDiaryId) {
         const idx = diaries.findIndex(d => String(d.id) === String(editingDiaryId));
@@ -3080,12 +3259,20 @@
         entry.createdAt = entry.updatedAt;
         diaries.push(entry);
       }
-      diaries.sort((a, b) => b.date !== a.date ? b.date.localeCompare(a.date) : (b.createdAt || '').localeCompare(a.createdAt || ''));
+      diaries.sort(diarySortFn);
       DB.set('diary', diaries);
       closeModal('diary-modal');
       await dbSet('diary', diaries.find(d => String(d.id) === String(entry.id)));
       renderDiary();
     });
+
+    function diarySortFn(a, b) {
+      if (a.date !== b.date) return b.date.localeCompare(a.date);
+      const at = a.time || (a.createdAt ? a.createdAt.slice(11, 16) : '00:00');
+      const bt = b.time || (b.createdAt ? b.createdAt.slice(11, 16) : '00:00');
+      if (at !== bt) return bt.localeCompare(at);
+      return (b.createdAt || '').localeCompare(a.createdAt || '');
+    }
 
     document.getElementById('diary-filter-bar').addEventListener('click', e => {
       const btn = e.target.closest('.filter-btn');
@@ -3096,8 +3283,53 @@
       renderDiary();
     });
 
+    function buildDiaryEntryEl(d) {
+      const entry = document.createElement('div');
+      entry.className = 'diary-entry';
+      const titleHtml = d.title ? `<div class="diary-title-text" style="white-space:normal;margin-bottom:6px">${d.title}</div>` : '';
+      entry.innerHTML = `
+        <div class="diary-entry-header">
+          <span class="diary-mood">${d.mood || '😊'}</span>
+          <span class="diary-date">${fmtDiaryDateTime(d)}</span>
+        </div>
+        <div class="diary-full" id="diary-full-${d.id}">${titleHtml}${(d.content || '').replace(/</g, '&lt;')}</div>
+        <div class="diary-actions" id="diary-actions-${d.id}" style="display:none">
+          <button class="edit-btn" data-diary-edit="${d.id}">编辑</button>
+          <button class="del-btn" data-diary-del="${d.id}">删除</button>
+        </div>`;
+
+      // 点击展开/收起（默认只显示日期和时间，展开后才显示标题与正文）
+      entry.addEventListener('click', ev => {
+        if (ev.target.closest('button')) return;
+        const full = document.getElementById('diary-full-' + d.id);
+        const actions = document.getElementById('diary-actions-' + d.id);
+        const isOpen = full.classList.toggle('open');
+        actions.style.display = isOpen ? 'flex' : 'none';
+      });
+
+      entry.querySelector('[data-diary-edit]').addEventListener('click', () => {
+        editingDiaryId = d.id;
+        document.getElementById('diary-modal-title').textContent = '编辑日记';
+        document.getElementById('diary-date').value = d.date;
+        document.getElementById('diary-time').value = d.time || nowHM();
+        document.getElementById('diary-title').value = d.title || '';
+        document.getElementById('diary-content').value = d.content || '';
+        document.querySelectorAll('#diary-mood-chips .chip').forEach(c => c.classList.toggle('selected', c.dataset.val === d.mood));
+        openModal('diary-modal');
+      });
+
+      entry.querySelector('[data-diary-del]').addEventListener('click', async () => {
+        if (!confirm('删除这篇日记？')) return;
+        DB.set('diary', DB.get('diary').filter(x => String(x.id) !== String(d.id)));
+        await dbDel('diary', d.id);
+        renderDiary();
+      });
+
+      return entry;
+    }
+
     function renderDiary() {
-      let diaries = [...DB.get('diary')].sort((a, b) => b.date !== a.date ? b.date.localeCompare(a.date) : (b.createdAt || '').localeCompare(a.createdAt || ''));
+      let diaries = [...DB.get('diary')].sort(diarySortFn);
       if (diaryFilterDays > 0) {
         const cutoff = addDate(today(), -diaryFilterDays);
         diaries = diaries.filter(d => d.date >= cutoff);
@@ -3105,53 +3337,40 @@
       const el = document.getElementById('diary-list');
       if (!diaries.length) { el.innerHTML = '<div class="empty" style="padding:20px 0">这段时间还没有日记</div>'; return }
 
-      el.innerHTML = '';
+      // 按日期分组（同一天的多篇 reflection 归入同一组，组内最新在最上方）
+      const dateOrder = [];
+      const groups = {};
       diaries.forEach(d => {
-        const entry = document.createElement('div');
-        entry.className = 'diary-entry';
-        const preview = (d.content || '').replace(/\n/g, ' ').slice(0, 60) + ((d.content || '').length > 60 ? '…' : '');
-        const titleHtml = d.title ? `<span class="diary-title-text">${d.title}</span>` : '';
-        entry.innerHTML = `
-          <div class="diary-entry-header">
-            <span class="diary-mood">${d.mood || '😊'}</span>
-            <span class="diary-date">${fmtDate(d.date)}</span>
-            ${titleHtml}
-          </div>
-          <div class="diary-preview">${preview}</div>
-          <div class="diary-full" id="diary-full-${d.id}">${(d.content || '').replace(/</g, '&lt;')}</div>
-          <div class="diary-actions" id="diary-actions-${d.id}" style="display:none">
-            <button class="edit-btn" data-diary-edit="${d.id}">编辑</button>
-            <button class="del-btn" data-diary-del="${d.id}">删除</button>
-          </div>`;
+        if (!groups[d.date]) { groups[d.date] = []; dateOrder.push(d.date); }
+        groups[d.date].push(d);
+      });
 
-        // 点击展开/收起
-        entry.addEventListener('click', ev => {
-          if (ev.target.closest('button')) return;
-          const full = document.getElementById('diary-full-' + d.id);
-          const actions = document.getElementById('diary-actions-' + d.id);
-          const isOpen = full.classList.toggle('open');
-          actions.style.display = isOpen ? 'flex' : 'none';
-          entry.querySelector('.diary-preview').style.display = isOpen ? 'none' : 'block';
+      el.innerHTML = '';
+      dateOrder.forEach((date, idx) => {
+        const list = groups[date];
+        if (list.length === 1) {
+          // 单篇：直接展示，不需要分组包裹
+          el.appendChild(buildDiaryEntryEl(list[0]));
+          return;
+        }
+        // 多篇：分组显示，默认展开首篇之外收起，点击组头展开/收起全部
+        const groupWrap = document.createElement('div');
+        groupWrap.className = 'sop-group';
+        const header = document.createElement('div');
+        header.className = 'sop-group-header';
+        header.id = `diary-group-header-${idx}`;
+        header.innerHTML = `<span>${fmtDiaryDate(date)} <span style="font-size:11px;color:var(--muted);font-weight:normal;margin-left:4px">${list.length}篇</span></span><span class="sop-group-arrow">▼</span>`;
+        const content = document.createElement('div');
+        content.className = 'sop-group-content';
+        content.id = `diary-group-content-${idx}`;
+        list.forEach(d => content.appendChild(buildDiaryEntryEl(d)));
+        header.addEventListener('click', () => {
+          const isOpen = content.classList.toggle('open');
+          header.classList.toggle('open', isOpen);
         });
-
-        entry.querySelector('[data-diary-edit]').addEventListener('click', () => {
-          editingDiaryId = d.id;
-          document.getElementById('diary-modal-title').textContent = '编辑日记';
-          document.getElementById('diary-date').value = d.date;
-          document.getElementById('diary-title').value = d.title || '';
-          document.getElementById('diary-content').value = d.content || '';
-          document.querySelectorAll('#diary-mood-chips .chip').forEach(c => c.classList.toggle('selected', c.dataset.val === d.mood));
-          openModal('diary-modal');
-        });
-
-        entry.querySelector('[data-diary-del]').addEventListener('click', async () => {
-          if (!confirm('删除这篇日记？')) return;
-          DB.set('diary', DB.get('diary').filter(x => String(x.id) !== String(d.id)));
-          await dbDel('diary', d.id);
-          renderDiary();
-        });
-
-        el.appendChild(entry);
+        groupWrap.appendChild(header);
+        groupWrap.appendChild(content);
+        el.appendChild(groupWrap);
       });
     }
 
@@ -3345,7 +3564,7 @@
           await loadUserData(); // personal data loads fine without a family
           currentScope = 'personal';
           applyScope();
-          navigateTo('sleep');
+          navigateTo(firstVisiblePersonalPage());
           openModal('family-modal');
           renderFamilyModal();
           return;
@@ -3357,7 +3576,7 @@
         document.getElementById('nav-name').textContent = CU.name || '—';
         await loadUserData();
         currentScope = 'personal';
-        navigateTo('sleep');
+        navigateTo(firstVisiblePersonalPage());
       } catch (e) {
         console.error('auth state error', e);
         showAuthScreen();
