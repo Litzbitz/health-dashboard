@@ -3223,7 +3223,6 @@
     function nowHM() { const d = new Date(); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
     function diaryTimeOf(d) { return d.time || (d.createdAt ? d.createdAt.slice(11, 16) : ''); }
     function fmtDiaryDate(dateStr) { const x = new Date(dateStr + 'T00:00:00'); return `${x.getFullYear()}年${x.getMonth() + 1}月${x.getDate()}日`; }
-    function fmtDiaryDateTime(d) { const t = diaryTimeOf(d); return t ? `${fmtDiaryDate(d.date)}  ${t}` : fmtDiaryDate(d.date); }
     function resetDiaryModal() {
       editingDiaryId = null;
       document.getElementById('diary-modal-title').textContent = '写日记';
@@ -3280,28 +3279,47 @@
       renderDiary();
     });
 
+    let diaryOpenEntryId = null; // Accordion：全局同一时间只有一篇正文展开
+
+    function closeDiaryEntry(id) {
+      const full = document.getElementById('diary-full-' + id);
+      const actions = document.getElementById('diary-actions-' + id);
+      full?.classList.remove('open');
+      if (actions) actions.style.display = 'none';
+    }
+    function openDiaryEntry(id) {
+      const full = document.getElementById('diary-full-' + id);
+      const actions = document.getElementById('diary-actions-' + id);
+      full?.classList.add('open');
+      if (actions) actions.style.display = 'flex';
+    }
+    function toggleDiaryEntry(id) {
+      const wasOpen = diaryOpenEntryId === id;
+      if (diaryOpenEntryId && diaryOpenEntryId !== id) closeDiaryEntry(diaryOpenEntryId);
+      if (wasOpen) { closeDiaryEntry(id); diaryOpenEntryId = null; }
+      else { openDiaryEntry(id); diaryOpenEntryId = id; }
+    }
+
+    // 第二层：单篇条目行——仅显示 Emoji + 标题 + 时间；点击后展开第三层正文（Accordion）
     function buildDiaryEntryEl(d) {
       const entry = document.createElement('div');
       entry.className = 'diary-entry';
-      const titleHtml = d.title ? `<div class="diary-title-text" style="white-space:normal;margin-bottom:6px">${d.title}</div>` : '';
+      const titleText = d.title ? d.title : '（无标题）';
       entry.innerHTML = `
         <div class="diary-entry-header">
           <span class="diary-mood">${d.mood || '😊'}</span>
-          <span class="diary-date">${fmtDiaryDateTime(d)}</span>
+          <span class="diary-title-text" style="white-space:normal">${titleText}</span>
+          <span class="diary-date" style="opacity:.7;margin-left:auto">${diaryTimeOf(d)}</span>
         </div>
-        <div class="diary-full" id="diary-full-${d.id}">${titleHtml}${(d.content || '').replace(/</g, '&lt;')}</div>
+        <div class="diary-full" id="diary-full-${d.id}">${(d.content || '').replace(/</g, '&lt;')}</div>
         <div class="diary-actions" id="diary-actions-${d.id}" style="display:none">
           <button class="edit-btn" data-diary-edit="${d.id}">编辑</button>
           <button class="del-btn" data-diary-del="${d.id}">删除</button>
         </div>`;
 
-      // 点击展开/收起（默认只显示日期和时间，展开后才显示标题与正文）
       entry.addEventListener('click', ev => {
         if (ev.target.closest('button')) return;
-        const full = document.getElementById('diary-full-' + d.id);
-        const actions = document.getElementById('diary-actions-' + d.id);
-        const isOpen = full.classList.toggle('open');
-        actions.style.display = isOpen ? 'flex' : 'none';
+        toggleDiaryEntry(d.id);
       });
 
       entry.querySelector('[data-diary-edit]').addEventListener('click', () => {
@@ -3319,8 +3337,14 @@
         if (!confirm('删除这篇日记？')) return;
         DB.set('diary', DB.get('diary').filter(x => String(x.id) !== String(d.id)));
         await dbDel('diary', d.id);
+        if (diaryOpenEntryId === d.id) diaryOpenEntryId = null;
         renderDiary();
       });
+
+      if (diaryOpenEntryId === d.id) {
+        entry.querySelector('.diary-full').classList.add('open');
+        entry.querySelector('.diary-actions').style.display = 'flex';
+      }
 
       return entry;
     }
@@ -3334,7 +3358,7 @@
       const el = document.getElementById('diary-list');
       if (!diaries.length) { el.innerHTML = '<div class="empty" style="padding:20px 0">这段时间还没有日记</div>'; return }
 
-      // 按日期分组（同一天的多篇 reflection 归入同一组，组内最新在最上方）
+      // 第一层：按日期分组，同一天的多篇 reflection 归入同一组，组内最新在最上方
       const dateOrder = [];
       const groups = {};
       diaries.forEach(d => {
@@ -3345,20 +3369,16 @@
       el.innerHTML = '';
       dateOrder.forEach((date, idx) => {
         const list = groups[date];
-        if (list.length === 1) {
-          // 单篇：直接展示，不需要分组包裹
-          el.appendChild(buildDiaryEntryEl(list[0]));
-          return;
-        }
-        // 多篇：分组显示，默认展开首篇之外收起，点击组头展开/收起全部
+        // 默认所有日期都只显示 Section Header（日期 + 篇数），点击后展开该日所有条目
+        const containsOpenEntry = list.some(d => d.id === diaryOpenEntryId);
         const groupWrap = document.createElement('div');
         groupWrap.className = 'sop-group';
         const header = document.createElement('div');
-        header.className = 'sop-group-header';
+        header.className = 'sop-group-header' + (containsOpenEntry ? ' open' : '');
         header.id = `diary-group-header-${idx}`;
-        header.innerHTML = `<span>${fmtDiaryDate(date)} <span style="font-size:11px;color:var(--muted);font-weight:normal;margin-left:4px">${list.length}篇</span></span><span class="sop-group-arrow">▼</span>`;
+        header.innerHTML = `<span>${fmtDiaryDate(date)}<span style="font-size:11px;color:var(--muted);font-weight:normal;margin-left:2px">(${list.length})</span></span><span class="sop-group-arrow">▼</span>`;
         const content = document.createElement('div');
-        content.className = 'sop-group-content';
+        content.className = 'sop-group-content' + (containsOpenEntry ? ' open' : '');
         content.id = `diary-group-content-${idx}`;
         list.forEach(d => content.appendChild(buildDiaryEntryEl(d)));
         header.addEventListener('click', () => {
